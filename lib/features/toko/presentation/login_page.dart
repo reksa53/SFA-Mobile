@@ -1,5 +1,9 @@
 import 'dart:ui';
 
+import 'package:dio/dio.dart';
+
+import '../../../core/network/api_service.dart';
+
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_colors.dart';
@@ -13,6 +17,7 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
+  bool _loading = false;
   final _email = TextEditingController();
   final _password = TextEditingController();
 
@@ -23,18 +28,45 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
-  void _login() {
+  Future<void> _login() async {
     if (!_email.text.contains('@') || _password.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Email atau password belum benar')),
-      );
+      _showMessage('Email atau password belum benar');
       return;
     }
-    // shortcut: belum ada autentikasi ke server, ganti saat API login siap
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (_) => const MainShell()),
-    );
+
+    setState(() => _loading = true);
+    try {
+      await ApiService.instance.login(_email.text.trim(), _password.text);
+      if (!mounted) return;
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const MainShell()),
+      );
+    } on DioException catch (e) {
+      _showMessage(_errorMessage(e));
+    } catch (_) {
+      _showMessage('Terjadi kesalahan, coba lagi');
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  String _errorMessage(DioException e) {
+    switch (e.response?.statusCode) {
+      case 401:
+        return 'Email atau password salah';
+      case 422:
+        return e.response?.data['message'] ?? 'Data tidak valid';
+      case null:
+        return 'Tidak bisa terhubung ke server';
+      default:
+        return 'Server error (${e.response?.statusCode})';
+    }
+  }
+
+  void _showMessage(String text) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
   }
 
   @override
@@ -76,7 +108,7 @@ class _LoginPageState extends State<LoginPage> {
                     width: double.infinity,
                     height: 48,
                     child: FilledButton(
-                      onPressed: _login,
+                      onPressed: _loading ? null : _login,
                       style: FilledButton.styleFrom(
                         backgroundColor: AppColors.rose,
                         foregroundColor: AppColors.white,
@@ -84,13 +116,22 @@ class _LoginPageState extends State<LoginPage> {
                           borderRadius: BorderRadius.circular(30),
                         ),
                       ),
-                      child: const Text(
-                        'Login',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
+                      child: _loading
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Text(
+                              'Login',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                     ),
                   ),
                 ],
