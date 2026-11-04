@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import 'core/navigation/main_shell.dart';
 import 'core/theme/app_theme.dart';
+import 'features/toko/presentation/login_page.dart';
 
 class SfaApp extends StatelessWidget {
   const SfaApp({super.key});
@@ -20,7 +21,7 @@ class SfaApp extends StatelessWidget {
         child: child!,
       ),
       // Nanti diganti halaman Login, lalu masuk ke MainShell.
-      home: const MainShell(),
+      home: const LoginPage(),
     );
   }
 }
