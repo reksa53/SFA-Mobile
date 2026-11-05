@@ -1,9 +1,9 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
-class ApiService {
-  ApiService._();
-  static final ApiService instance = ApiService._();
+class ApiClient {
+  ApiClient._();
+  static final ApiClient instance = ApiClient._();
 
   // Android Emulator. HP fisik: ganti ke IP laptop, misal http://192.168.1.5:8000/api
   static const _baseUrl = 'http://10.0.2.2:8000/api';

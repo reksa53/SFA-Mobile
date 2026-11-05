@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import 'core/navigation/main_shell.dart';
-import 'core/theme/app_theme.dart';
-import 'features/toko/presentation/login_page.dart';
+import 'ui/auth/views/login_screen.dart';
+import 'ui/core/theme/app_theme.dart';
+
+
 
 class SfaApp extends StatelessWidget {
   const SfaApp({super.key});
 
   @override
+
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Central Sinn',
@@ -21,7 +23,7 @@ class SfaApp extends StatelessWidget {
         child: child!,
       ),
       // Nanti diganti halaman Login, lalu masuk ke MainShell.
-      home: const LoginPage(),
+      home: const LoginScreen(),
     );
   }
 }
