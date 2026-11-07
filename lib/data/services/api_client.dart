@@ -1,7 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
-import 'api_config.dart';
+import '../../config/api_config.dart';
 
 class ApiClient {
   ApiClient._();
