@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../core/widgets/floating_navbar.dart';
 import '../core/widgets/placeholder_page.dart';
 import '../core/widgets/tab_shell.dart';
+import 'product_list_screen.dart';
 
 class ManagerShell extends StatelessWidget {
   const ManagerShell({super.key});
@@ -17,7 +18,7 @@ class ManagerShell extends StatelessWidget {
   // Ganti PlaceholderPage dengan layar sungguhan saat fiturnya jadi.
   static const _pages = [
     PlaceholderPage(title: 'Customer'),
-    PlaceholderPage(title: 'Product'),
+    ProductListScreen(),
     PlaceholderPage(title: 'Sales & Visit'),
     PlaceholderPage(title: 'Order'),
   ];
