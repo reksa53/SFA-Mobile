@@ -33,4 +33,7 @@ class AppTextStyles {
 
   static TextStyle get button => GoogleFonts.inter(
       fontSize: 16, fontWeight: FontWeight.w700, letterSpacing: 0.5);
+
+    static TextStyle get navLabel =>
+      GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w600);
 }
