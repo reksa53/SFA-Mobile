@@ -1,7 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
-import '../../config/api_config.dart';
+import 'api_config.dart';
 
 class ApiClient {
   ApiClient._();
@@ -28,16 +28,30 @@ class ApiClient {
               }
               handler.next(options);
             },
+            onError: (e, handler) async {
+              // Token kedaluwarsa/tidak valid (selain saat login itu sendiri)
+              if (e.response?.statusCode == 401 &&
+                  e.requestOptions.path != '/login') {
+                await _storage.delete(key: _tokenKey);
+              }
+              handler.next(e);
+            },
           ),
         );
+
+  Future<bool> hasToken() async =>
+      (await _storage.read(key: _tokenKey)) != null;
 
   Future<void> login(String email, String password) async {
     final res = await dio.post(
       '/login',
       data: {'email': email, 'password': password},
     );
-    // sesuaikan key dengan response Laravel kamu
-    await _storage.write(key: _tokenKey, value: res.data['token']);
+    final token = res.data['token'];
+    if (token is! String || token.isEmpty) {
+      throw Exception('Token tidak ditemukan di response');
+    }
+    await _storage.write(key: _tokenKey, value: token);
   }
 
   Future<void> logout() async {
