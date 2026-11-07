@@ -293,7 +293,9 @@ class _ProductListScreenState extends State<ProductListScreen> {
                               ),
                             ),
                           )
-                        : Scrollbar(
+                        : ScrollConfiguration(
+                          behavior: ScrollConfiguration.of(context).copyWith(overscroll: false),
+                          child: Scrollbar(
                             thickness: 3,
                             radius: const Radius.circular(8),
                             child: ListView.separated(
@@ -305,12 +307,14 @@ class _ProductListScreenState extends State<ProductListScreen> {
                                 indent: 14,
                                 endIndent: 14,
                               ),
+                          
                               itemBuilder: (_, i) =>
                                   _Row(index: i + 1, product: shown[i]),
                             ),
                           ),
                   ),
                 ),
+              ),
               ),
               const SizedBox(height: 12),
               Row(
@@ -391,12 +395,15 @@ class _Row extends StatelessWidget {
               ],
             ),
           ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          SizedBox(
+            width: 72,
+            height: 30,
+            child: DecoratedBox(
             decoration: BoxDecoration(
               color: AppColors.grey,
               borderRadius: BorderRadius.circular(8),
             ),
+            child: Center(
             child: Text(
               out ? 'Out of stock' : '${product.stock} box',
               style: TextStyle(
@@ -405,6 +412,8 @@ class _Row extends StatelessWidget {
                 color: AppColors.black,
               ),
             ),
+          ),
+          ),
           ),
         ],
       ),
