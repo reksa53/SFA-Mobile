@@ -297,7 +297,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
                             thickness: 3,
                             radius: const Radius.circular(8),
                             child: ListView.separated(
-                              physics: const BouncingScrollPhysics(),
+                              physics: const ClampingScrollPhysics(),
                               padding: const EdgeInsets.symmetric(vertical: 6),
                               itemCount: shown.length,
                               separatorBuilder: (_, __) => const Divider(
