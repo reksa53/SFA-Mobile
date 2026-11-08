@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 
 import 'ui/auth/views/login_screen.dart';
 import 'ui/core/theme/app_theme.dart';
-import 'ui/manager/manager_shell.dart';
 
 
 
@@ -24,7 +23,7 @@ class SfaApp extends StatelessWidget {
         child: child!,
       ),
       // Nanti diganti halaman Login, lalu masuk ke MainShell.
-      home: const ManagerShell(),
+      home: const LoginScreen(),
     );
   }
 }
