@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../../data/models/product.dart';
-import '../core/theme/app_colors.dart';
+import '../../../data/models/product.dart';
+import '../../core/theme/app_colors.dart';
 
 const _months = [
   'jan',

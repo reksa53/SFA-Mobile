@@ -3,9 +3,9 @@ import 'package:flutter/material.dart';
 import '../core/widgets/floating_navbar.dart';
 import '../core/widgets/placeholder_page.dart';
 import '../core/widgets/tab_shell.dart';
-import 'product_list_screen.dart';
-import 'customer_list_screen.dart';
-import 'sales_visit_screen.dart';
+import 'product/product_list_screen.dart';
+import 'customer/customer_list_screen.dart';
+import 'sales/sales_visit_screen.dart';
 
 class ManagerShell extends StatelessWidget {
   const ManagerShell({super.key});

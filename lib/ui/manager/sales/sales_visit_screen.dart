@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../../data/models/sales.dart';
-import '../../data/repositories/sales_visit_repository.dart';
-import '../core/theme/app_colors.dart';
-import '../core/widgets/manager_header.dart';
+import '../../../data/models/sales.dart';
+import '../../../data/repositories/sales_visit_repository.dart';
+import '../../core/theme/app_colors.dart';
+import '../../core/widgets/manager_header.dart';
 import 'visit_screen.dart';
 
 /// Tab "Sales & Visit" milik Manager: daftar sales.
@@ -157,10 +157,9 @@ class _SalesVisitScreenState extends State<SalesVisitScreen> {
                     child: FilledButton(
                       onPressed: _addSales,
                       style: FilledButton.styleFrom(
-                        minimumSize: Size.zero,
                         backgroundColor: AppColors.red,
                         foregroundColor: AppColors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        padding: const EdgeInsets.symmetric(horizontal: 14),
                         shape: const StadiumBorder(),
                       ),
                       child: Row(
