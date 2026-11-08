@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../core/theme/app_colors.dart';
+import '../../core/theme/app_colors.dart';
 import 'customer_detail_screen.dart';
 
 /// Model sementara. Pindahkan ke data/models saat API-nya siap.
