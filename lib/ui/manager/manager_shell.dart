@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-
+import 'order/views/order_list_screen.dart';
 import '../core/widgets/floating_navbar.dart';
 import '../core/widgets/placeholder_page.dart';
 import '../core/widgets/tab_shell.dart';
@@ -21,7 +21,7 @@ class ManagerShell extends StatelessWidget {
     CustomerListScreen(),
     ProductListScreen(),
     PlaceholderPage(title: 'Sales & Visit'),
-    PlaceholderPage(title: 'Order'),
+    OrderListScreen(),
   ];
 
   @override
