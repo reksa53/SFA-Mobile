@@ -253,7 +253,7 @@ class _SalesRow extends StatelessWidget {
             CircleAvatar(
               radius: 20,
               backgroundColor: AppColors.grey,
-              backgroundImage: adaFoto ? NetworkImage(foto!) : null,
+              backgroundImage: adaFoto ? NetworkImage(foto) : null,
               child: adaFoto
                   ? null
                   : Text(
