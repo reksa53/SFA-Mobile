@@ -5,6 +5,7 @@ import '../core/widgets/placeholder_page.dart';
 import '../core/widgets/tab_shell.dart';
 import 'product/product_list_screen.dart';
 import 'customer/customer_list_screen.dart';
+import 'sales/sales_visit_screen.dart';
 
 class ManagerShell extends StatelessWidget {
   const ManagerShell({super.key});
@@ -20,8 +21,8 @@ class ManagerShell extends StatelessWidget {
   static const _pages = [
     CustomerListScreen(),
     ProductListScreen(),
-    PlaceholderPage(title: 'Sales & Visit'),
     OrderListScreen(),
+    SalesVisitScreen(),
   ];
 
   @override
