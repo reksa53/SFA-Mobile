@@ -70,7 +70,7 @@ class _OrderListScreenState extends State<OrderListScreen> {
               child: ListView.separated(
                 padding: EdgeInsets.zero,
                 itemCount: _dummyOrders.length,
-                separatorBuilder: (_, __) =>
+                separatorBuilder: (_, _) =>
                     const Divider(height: 1, color: Color(0xFFEDEDED)),
                 itemBuilder: (_, i) =>
                     OrderTile(number: i + 1, order: _dummyOrders[i]),
