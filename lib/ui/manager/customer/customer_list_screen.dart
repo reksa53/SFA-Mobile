@@ -94,7 +94,7 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
                     : ListView.separated(
                         padding: const EdgeInsets.symmetric(vertical: 4),
                         itemCount: stores.length,
-                        separatorBuilder: (_, __) => const Divider(
+                        separatorBuilder: (_, _) => const Divider(
                           height: 1,
                           thickness: 1,
                           indent: 12,
