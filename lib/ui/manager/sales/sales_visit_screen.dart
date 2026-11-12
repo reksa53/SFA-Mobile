@@ -5,6 +5,7 @@ import '../../../data/models/sales.dart';
 import '../../../data/repositories/sales_visit_repository.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/manager_header.dart';
+import 'add_sales_screen.dart';
 import 'visit_screen.dart';
 
 /// Tab "Sales & Visit" milik Manager: daftar sales.
@@ -85,10 +86,15 @@ class _SalesVisitScreenState extends State<SalesVisitScreen> {
     );
   }
 
-  void _addSales() {
-    // TODO: tambah sales = register role staff dari modul Manager.
+  Future<void> _addSales() async {
+    final baru = await Navigator.of(context).push<Sales>(
+      MaterialPageRoute(builder: (_) => const AddSalesScreen()),
+    );
+    if (baru == null || !mounted) return;
+    // TODO: setelah API register siap, muat ulang daftar dari server.
+    setState(() => _sales = [..._sales, baru]);
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Fitur tambah sales belum dibuat')),
+      SnackBar(content: Text('${baru.nama} ditambahkan')),
     );
   }
 
@@ -159,6 +165,7 @@ class _SalesVisitScreenState extends State<SalesVisitScreen> {
                       style: FilledButton.styleFrom(
                         backgroundColor: AppColors.red,
                         foregroundColor: AppColors.white,
+                        minimumSize: Size.zero,
                         padding: const EdgeInsets.symmetric(horizontal: 14),
                         shape: const StadiumBorder(),
                       ),
@@ -242,7 +249,10 @@ class _SalesRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final foto = sales.fotoUrl;
-    final adaFoto = foto != null && foto.isNotEmpty;
+final bytes = sales.fotoBytes;
+final ImageProvider? gambar = bytes != null
+    ? MemoryImage(bytes)
+    : (foto != null && foto.isNotEmpty ? NetworkImage(foto) : null);
 
     return InkWell(
       onTap: onTap,
@@ -253,8 +263,8 @@ class _SalesRow extends StatelessWidget {
             CircleAvatar(
               radius: 20,
               backgroundColor: AppColors.grey,
-              backgroundImage: adaFoto ? NetworkImage(foto) : null,
-              child: adaFoto
+              backgroundImage: gambar,
+              child: gambar != null
                   ? null
                   : Text(
                       sales.inisial,

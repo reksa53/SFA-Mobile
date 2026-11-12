@@ -1,9 +1,21 @@
+import 'dart:typed_data';
+
 class Sales {
-  const Sales({required this.id, required this.nama, this.fotoUrl});
+  const Sales({
+    required this.id,
+    required this.nama,
+    this.fotoUrl,
+    this.fotoBytes,
+  });
 
   final int id;
   final String nama;
+
+  /// Foto dari server (alamat URL).
   final String? fotoUrl;
+
+  /// Foto yang baru dipilih dari kamera/galeri di aplikasi (belum diunggah).
+  final Uint8List? fotoBytes;
 
   /// ASUMSI nama field API: id, name, photo. Sesuaikan dengan response Laravel.
   factory Sales.fromJson(Map<String, dynamic> json) => Sales(
