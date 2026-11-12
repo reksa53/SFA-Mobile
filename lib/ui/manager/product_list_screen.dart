@@ -294,27 +294,30 @@ class _ProductListScreenState extends State<ProductListScreen> {
                             ),
                           )
                         : ScrollConfiguration(
-                          behavior: ScrollConfiguration.of(context).copyWith(overscroll: false),
-                          child: Scrollbar(
-                            thickness: 3,
-                            radius: const Radius.circular(8),
-                            child: ListView.separated(
-                              physics: const ClampingScrollPhysics(),
-                              padding: const EdgeInsets.symmetric(vertical: 6),
-                              itemCount: shown.length,
-                              separatorBuilder: (_, __) => const Divider(
-                                height: 1,
-                                indent: 14,
-                                endIndent: 14,
+                            behavior: ScrollConfiguration.of(context)
+                                .copyWith(overscroll: false),
+                            child: Scrollbar(
+                              thickness: 3,
+                              radius: const Radius.circular(8),
+                              child: ListView.separated(
+                                physics: const ClampingScrollPhysics(),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 6,
+                                ),
+                                itemCount: shown.length,
+                                separatorBuilder: (_, __) => const Divider(
+                                  height: 1,
+                                  indent: 14,
+                                  endIndent: 14,
+                                ),
+
+                                itemBuilder: (_, i) =>
+                                    _Row(index: i + 1, product: shown[i]),
                               ),
-                          
-                              itemBuilder: (_, i) =>
-                                  _Row(index: i + 1, product: shown[i]),
                             ),
                           ),
                   ),
                 ),
-              ),
               ),
               const SizedBox(height: 12),
               Row(
@@ -399,21 +402,21 @@ class _Row extends StatelessWidget {
             width: 72,
             height: 30,
             child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: AppColors.grey,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Center(
-            child: Text(
-              out ? 'Out of stock' : '${product.stock} box',
-              style: TextStyle(
-                fontSize: out ? 10 : 13,
-                fontWeight: FontWeight.bold,
-                color: AppColors.black,
+              decoration: BoxDecoration(
+                color: AppColors.grey,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Center(
+                child: Text(
+                  out ? 'Out of stock' : '${product.stock} box',
+                  style: TextStyle(
+                    fontSize: out ? 10 : 13,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.black,
+                  ),
+                ),
               ),
             ),
-          ),
-          ),
           ),
         ],
       ),
