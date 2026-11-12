@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../core/theme/app_colors.dart';
+import '../../core/theme/app_colors.dart';
 import 'customer_detail_screen.dart';
 
 /// Model sementara. Pindahkan ke data/models saat API-nya siap.
@@ -94,7 +94,7 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
                     : ListView.separated(
                         padding: const EdgeInsets.symmetric(vertical: 4),
                         itemCount: stores.length,
-                        separatorBuilder: (_, __) => const Divider(
+                        separatorBuilder: (_, _) => const Divider(
                           height: 1,
                           thickness: 1,
                           indent: 12,
