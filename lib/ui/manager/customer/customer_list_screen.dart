@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_colors.dart';
+import 'add_customer_screen.dart';
 import 'customer_detail_screen.dart';
 
 /// Model sementara. Pindahkan ke data/models saat API-nya siap.
@@ -63,7 +64,10 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
   }
 
   void _onAddStore() {
-    // TODO: navigasi ke halaman tambah toko.
+    Navigator.of(context).push<bool>(
+      MaterialPageRoute(builder: (_) => const AddCustomerScreen()),
+    );
+    // TODO: kalau hasilnya true, refresh daftar customer dari API.
   }
 
   @override

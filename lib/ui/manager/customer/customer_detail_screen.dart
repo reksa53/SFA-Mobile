@@ -80,7 +80,7 @@ class CustomerDetailScreen extends StatelessWidget {
               child: ListView.separated(
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 itemCount: _orders.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 8),
+                separatorBuilder: (_, _) => const SizedBox(height: 8),
                 itemBuilder: (_, i) => _OrderTile(order: _orders[i]),
               ),
             ),
@@ -242,7 +242,7 @@ class _InfoCard extends StatelessWidget {
                           child: ListView.separated(
                             padding: EdgeInsets.zero,
                             itemCount: history.length,
-                            separatorBuilder: (_, __) =>
+                            separatorBuilder: (_, _) =>
                                 const Divider(height: 1, color: Colors.black54),
                             itemBuilder: (_, i) => Padding(
                               padding: const EdgeInsets.symmetric(vertical: 6),
