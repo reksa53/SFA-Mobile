@@ -10,6 +10,7 @@ import '../../core/theme/manager_colors.dart';
 import '../../core/widgets/manager_header.dart';
 import 'visit_calendar.dart';
 import 'visit_card.dart';
+import 'edit_visit_screen.dart';
 
 /// Layar "Visit": kalender + daftar kunjungan satu sales.
 /// Dibuka dari SalesVisitScreen dan menutupi navbar (sesuai Figma).
@@ -108,10 +109,18 @@ class _VisitScreenState extends State<VisitScreen> {
     return list;
   }
 
-  void _onEdit() {
-    // TODO: arahkan ke form edit jadwal kunjungan kalau desainnya sudah ada.
+    Future<void> _onEdit() async {
+    final hasil = await Navigator.of(context).push<List<Visit>>(
+      MaterialPageRoute(
+        builder: (_) =>
+            EditVisitScreen(sales: widget.sales, visits: _visits),
+      ),
+    );
+    if (hasil == null || !mounted) return;
+    // TODO: kirim perubahan ke API; sementara hanya disimpan di layar.
+    setState(() => _visits = hasil);
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Fitur edit belum dibuat')),
+      const SnackBar(content: Text('Jadwal kunjungan disimpan')),
     );
   }
 
@@ -248,7 +257,7 @@ class _BottomBar extends StatelessWidget {
                 shape: const StadiumBorder(),
               ),
               child: Text(
-                'EDIT',
+                'Edit',
                 style: GoogleFonts.poppins(
                   fontSize: 20,
                   fontWeight: FontWeight.w700,

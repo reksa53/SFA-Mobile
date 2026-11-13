@@ -31,15 +31,17 @@ class Visit {
     required this.tokoNama,
     required this.tanggal,
     required this.status,
+    this.catatan = '',
   });
 
   final int id;
   final String tokoNama;
   final DateTime tanggal; // hanya tanggal, tanpa jam
   final VisitStatus status;
+  final String catatan; // opsional, diisi Manager di layar Edit Visit
 
-  /// ASUMSI nama field API: id, store_name (atau toko.name), visit_date, status.
-  /// Sesuaikan dengan response Laravel.
+  /// ASUMSI nama field API: id, store_name (atau toko.name), visit_date,
+  /// status, note. Sesuaikan dengan response Laravel.
   factory Visit.fromJson(Map<String, dynamic> json) {
     final toko = json['toko'] ?? json['store'];
     final nama = json['store_name'] ??
@@ -52,6 +54,8 @@ class Visit {
       tokoNama: (nama ?? '').toString(),
       tanggal: dateOnly(DateTime.parse(tanggal.toString())),
       status: VisitStatus.parse(json['status']),
+      catatan: (json['note'] ?? json['notes'] ?? json['catatan'] ?? '')
+          .toString(),
     );
   }
 }

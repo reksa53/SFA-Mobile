@@ -17,11 +17,11 @@ class ManagerShell extends StatelessWidget {
   ];
 
   // Ganti PlaceholderPage dengan layar sungguhan saat fiturnya jadi.
-  static const _pages = [
+    static const _pages = [
     CustomerListScreen(),
     ProductListScreen(),
-    OrderListScreen(),
     SalesVisitScreen(),
+    OrderListScreen(),
   ];
 
   @override
