@@ -281,6 +281,8 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
   InputDecoration _decoration(String label, {bool required = false}) {
     return InputDecoration(
       labelText: required ? '$label *' : label,
+      labelStyle: const TextStyle(color: Color(0xFF757575)),
+      floatingLabelStyle: const TextStyle(color: AppColors.red),
       counterText: '',
       filled: true,
       fillColor: const Color(0xFFF3F3F3),
@@ -310,6 +312,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
       padding: const EdgeInsets.only(bottom: 14),
       child: TextFormField(
         controller: controller,
+        style: const TextStyle(color: Colors.black87),
         maxLength: maxLength,
         maxLines: maxLines,
         keyboardType: keyboardType,
@@ -329,6 +332,9 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
       padding: const EdgeInsets.only(bottom: 14),
       child: DropdownButtonFormField<int>(
         isExpanded: true,
+        style: const TextStyle(color: Colors.black87),
+        dropdownColor: AppColors.white,
+        iconEnabledColor: Colors.black54,
         decoration: _decoration('Sales yang Menangani', required: true),
         items: [
           for (final s in _salesOptions)

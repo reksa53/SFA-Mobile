@@ -1,20 +1,72 @@
-class Product {
-  const Product(this.name, this.expiry, this.stock);
-  final String name;
-  final DateTime expiry;
-  final int stock; // 0 = out of stock
+const kNearExpiredDays = 730; // shortcut: aturan tebakan, samakan dengan backend
+
+DateTime today() {
+  final n = DateTime.now();
+  return DateTime(n.year, n.month, n.day);
 }
 
-// shortcut: data dummy, ganti dengan data API nanti
-final dummyProducts = [
-  Product('Indomie Goreng', DateTime(2030, 5, 28), 265),
-  Product('Teh Botol Sosro', DateTime(2030, 2, 7), 0),
-  Product('Beras Premium 5 kg', DateTime(2028, 3, 12), 0),
-  Product('Minyak Goreng Bimoli 2 L', DateTime(2028, 9, 30), 55),
-  Product('Gula Pasir Gulaku 1 kg', DateTime(2029, 6, 18), 155),
-  Product('Kecap Manis Bango 600 ml', DateTime(2028, 2, 5), 63),
-  Product('Garam Dapur Refina 500 gr', DateTime(2030, 4, 14), 46),
-  Product('Kopi Kapal Api 165 gr', DateTime(2028, 7, 9), 89),
-  Product('Susu Kental Manis Frisian Flag', DateTime(2028, 10, 27), 25),
-  Product('Ultra Milk Coklat 250 ml', DateTime(2027, 12, 3), 570),
-];
+class ProductBatch {
+  const ProductBatch({
+    required this.number,
+    this.expiry,
+    required this.initialQty,
+    required this.qty,
+    required this.receivedAt,
+  });
+
+  final String number;
+  final DateTime? expiry; // null = tanpa masa kedaluwarsa
+  final int initialQty;
+  final int qty; // sisa
+  final DateTime receivedAt;
+
+  bool get expired => expiry != null && expiry!.isBefore(today());
+
+  bool get nearExpired =>
+      expiry != null &&
+      !expired &&
+      expiry!.isBefore(today().add(const Duration(days: kNearExpiredDays)));
+}
+
+class Product {
+  Product({
+    required this.sku,
+    required this.name,
+    this.brand,
+    this.category,
+    this.unit = 'pcs',
+    required this.price,
+    this.isActive = true,
+    List<ProductBatch>? batches,
+  }) : batches = batches ?? [];
+
+  final String sku;
+  final String name;
+  final String? brand;
+  final String? category;
+  final String unit;
+  final int price; // Rupiah
+  final bool isActive;
+  final List<ProductBatch> batches;
+
+  // urut FEFO: expired terdekat dulu, tanpa expired paling akhir
+  List<ProductBatch> get fefo => [...batches]
+    ..sort((a, b) {
+      if (a.expiry == null && b.expiry == null) return 0;
+      if (a.expiry == null) return 1;
+      if (b.expiry == null) return -1;
+      return a.expiry!.compareTo(b.expiry!);
+    });
+
+  // stok = jumlah sisa batch yang belum expired (tidak ada kolom stock)
+  int get stock => batches.where((b) => !b.expired).fold(0, (s, b) => s + b.qty);
+
+  DateTime? get nearestExpiry {
+    final d = batches
+        .where((b) => !b.expired && b.qty > 0 && b.expiry != null)
+        .map((b) => b.expiry!);
+    return d.isEmpty ? null : d.reduce((a, b) => a.isBefore(b) ? a : b);
+  }
+
+  bool get nearExpired => batches.any((b) => b.qty > 0 && b.nearExpired);
+}
