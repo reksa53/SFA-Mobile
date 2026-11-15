@@ -1,20 +1,38 @@
 const _namaBulan = [
-  'Januari',
-  'Februari',
-  'Maret',
+  'January',
+  'February',
+  'March',
   'April',
-  'Mei',
-  'Juni',
-  'Juli',
-  'Agustus',
+  'May',
+  'June',
+  'July',
+  'August',
   'September',
-  'Oktober',
+  'October',
   'November',
-  'Desember',
+  'December',
+];
+
+const _singkatBulan = [
+  'JAN',
+  'FEB',
+  'MAR',
+  'APR',
+  'MAY',
+  'JUN',
+  'JUL',
+  'AUG',
+  'SEP',
+  'OCT',
+  'NOV',
+  'DEC',
 ];
 
 /// [bulan] 1..12
 String namaBulan(int bulan) => _namaBulan[bulan - 1];
+
+/// Contoh: OKT. [bulan] 1..12
+String singkatBulan(int bulan) => _singkatBulan[bulan - 1];
 
 /// Contoh: 23 Oktober 2026
 String formatTanggal(DateTime d) => '${d.day} ${namaBulan(d.month)} ${d.year}';

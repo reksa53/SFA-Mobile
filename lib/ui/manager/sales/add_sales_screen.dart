@@ -7,9 +7,14 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../../data/models/sales.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/manager_colors.dart';
+import 'sales_avatar.dart';
 
 /// Pilihan di menu ganti foto.
 enum _FotoAksi { kamera, galeri, hapus }
+
+/// Warna dasar kolom isian (gelap).
+const _warnaKolom = Color(0xFF3F3F3F);
 
 /// Layar "Add Sales": form untuk menambah akun sales baru.
 /// Dibuka dari tombol "Add Sales" di SalesVisitScreen dan menutupi navbar.
@@ -29,9 +34,15 @@ class _AddSalesScreenState extends State<AddSalesScreen> {
   final _email = TextEditingController();
   final _telepon = TextEditingController();
   final _password = TextEditingController();
+  final _konfirmasi = TextEditingController();
   bool _hidePassword = true;
+  bool _hideKonfirmasi = true;
   final _picker = ImagePicker();
   Uint8List? _foto; // foto yang dipilih (null = belum ada)
+
+  // Id sementara; dipakai juga untuk warna avatar supaya warnanya sama
+  // dengan yang tampil di daftar sales.
+  final int _id = DateTime.now().millisecondsSinceEpoch;
 
   @override
   void dispose() {
@@ -39,6 +50,7 @@ class _AddSalesScreenState extends State<AddSalesScreen> {
     _email.dispose();
     _telepon.dispose();
     _password.dispose();
+    _konfirmasi.dispose();
     super.dispose();
   }
 
@@ -48,7 +60,7 @@ class _AddSalesScreenState extends State<AddSalesScreen> {
     // TODO: kirim ke API (Manager mendaftarkan akun dengan role sales),
     // lalu pakai id dari response server, bukan id sementara ini.
     final baru = Sales(
-      id: DateTime.now().millisecondsSinceEpoch,
+      id: _id,
       nama: _nama.text.trim(),
       fotoBytes: _foto,
     );
@@ -59,7 +71,7 @@ class _AddSalesScreenState extends State<AddSalesScreen> {
   Future<void> _pilihFoto() async {
     final aksi = await showModalBottomSheet<_FotoAksi>(
       context: context,
-      backgroundColor: AppColors.white,
+      backgroundColor: const Color(0xFF565656),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -72,26 +84,26 @@ class _AddSalesScreenState extends State<AddSalesScreen> {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: Colors.black26,
+                color: Colors.white30,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
             const SizedBox(height: 8),
             _FotoMenuItem(
               icon: Icons.photo_camera_outlined,
-              label: 'Ambil dari kamera',
+              label: 'Take photo',
               onTap: () => Navigator.pop(ctx, _FotoAksi.kamera),
             ),
             _FotoMenuItem(
               icon: Icons.photo_library_outlined,
-              label: 'Pilih dari galeri',
+              label: 'Choose from gallery',
               onTap: () => Navigator.pop(ctx, _FotoAksi.galeri),
             ),
             if (_foto != null)
               _FotoMenuItem(
                 icon: Icons.delete_outline,
-                label: 'Hapus foto',
-                color: AppColors.red,
+                label: 'Remove photo',
+                color: const Color(0xFFFF8A8A),
                 onTap: () => Navigator.pop(ctx, _FotoAksi.hapus),
               ),
             const SizedBox(height: 8),
@@ -125,33 +137,49 @@ class _AddSalesScreenState extends State<AddSalesScreen> {
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Tidak bisa membuka kamera/galeri')),
+        const SnackBar(content: Text('Cannot open camera/gallery')),
       );
     }
   }
 
   String? _wajib(String? v, String label) =>
-      (v == null || v.trim().isEmpty) ? '$label wajib diisi' : null;
+      (v == null || v.trim().isEmpty) ? '$label is required' : null;
 
   String? _cekEmail(String? v) {
     final salah = _wajib(v, 'Email');
     if (salah != null) return salah;
     final ok = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(v!.trim());
-    return ok ? null : 'Format email tidak valid';
+    return ok ? null : 'Invalid email format';
   }
 
   String? _cekTelepon(String? v) {
-    final salah = _wajib(v, 'No. telepon');
+    final salah = _wajib(v, 'Phone number');
     if (salah != null) return salah;
     final angka = v!.replaceAll(RegExp(r'[\s\-+]'), '');
     final ok = RegExp(r'^\d{9,15}$').hasMatch(angka);
-    return ok ? null : 'No. telepon tidak valid';
+    return ok ? null : 'Invalid phone number';
   }
 
   String? _cekPassword(String? v) {
-    if (v == null || v.isEmpty) return 'Password wajib diisi';
-    return v.length < 8 ? 'Password minimal 8 karakter' : null;
+    if (v == null || v.isEmpty) return 'Password is required';
+    return v.length < 8 ? 'Password must be at least 8 characters' : null;
   }
+
+  String? _cekKonfirmasi(String? v) {
+    if (v == null || v.isEmpty) return 'Please confirm your password';
+    return v == _password.text ? null : 'Passwords do not match';
+  }
+
+  Widget _mata(bool tersembunyi, VoidCallback onTap) => IconButton(
+        tooltip: tersembunyi ? 'Show password' : 'Hide password',
+        onPressed: onTap,
+        icon: Icon(
+          tersembunyi
+              ? Icons.visibility_outlined
+              : Icons.visibility_off_outlined,
+          color: Colors.white70,
+        ),
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -160,116 +188,130 @@ class _AddSalesScreenState extends State<AddSalesScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // Judul halaman (tanpa tombol cari, karena tidak ada daftar).
+            // Header: tombol back + judul (sama seperti layar Visit).
             Padding(
               padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
               child: SizedBox(
                 height: 44,
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    'Add Sales',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.poppins(
-                      fontSize: 32,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.white,
+                child: Row(
+                  children: [
+                    Material(
+                      color: const Color(0x1AFFFFFF),
+                      borderRadius: BorderRadius.circular(12),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(12),
+                        onTap: () => Navigator.of(context).maybePop(),
+                        child: const SizedBox(
+                          width: 44,
+                          height: 44,
+                          child: Icon(Icons.chevron_left,
+                              size: 28, color: AppColors.white),
+                        ),
+                      ),
                     ),
-                  ),
+                    const SizedBox(width: 12),
+                    Text(
+                      'Add Sales',
+                      style: GoogleFonts.poppins(
+                        fontSize: 30,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.white,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
-            // Expanded + Center + maxHeight: kotak putih tingginya paling besar
-            // 550, tetap di tengah, dan MENGECIL otomatis saat keyboard muncul
-            // (isinya bisa digulir) sehingga tidak ada garis overflow.
+            // Box abu-abu memenuhi sisa layar sampai tombol SIMPAN. Isinya
+            // tersebar merata; kalau layar pendek / keyboard muncul, bisa digulir.
             Expanded(
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(
-                    maxHeight: 550, // ← tinggi kotak putih, ubah angka ini
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: ManagerColors.calendar,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: Colors.white10),
                   ),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: Material(
-                  color: AppColors.white,
-                  borderRadius: BorderRadius.circular(24),
-                  clipBehavior: Clip.antiAlias,
                   child: LayoutBuilder(
                     builder: (context, box) => SingleChildScrollView(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 20, vertical: 40),
+                      padding: const EdgeInsets.fromLTRB(16, 20, 16, 20),
                       child: ConstrainedBox(
                         constraints: BoxConstraints(
-                          minHeight: math.max(0.0, box.maxHeight - 80),
+                          minHeight: math.max(0.0, box.maxHeight - 40),
                         ),
-                        // Center = isi form tepat di tengah kotak putih
-                        // (atas-bawah dan kiri-kanan).
-                        child: Align(
-                        alignment: Alignment.topCenter,
+                        child: IntrinsicHeight(
                           child: Form(
                             key: _formKey,
                             child: Column(
-                              mainAxisSize: MainAxisSize.min,
+                              mainAxisAlignment: MainAxisAlignment.start,
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
+                                const SizedBox(height: 26),
                                 Center(
                                   child: _FotoPicker(
+                                    id: _id,
                                     nama: _nama,
                                     foto: _foto,
                                     onTap: _pilihFoto,
                                   ),
                                 ),
-                                const SizedBox(height: 16),
+                                const SizedBox(height: 28),
                                 _Field(
-                                  label: 'Nama Lengkap',
+                                  label: 'Full Name',
                                   controller: _nama,
-                                  hint: 'Contoh: Icha Clowy',
-                                  icon: Icons.person_outline,
+                                  hint: 'Example: Icha Clowy',
+                                  icon: Icons.person,
                                   keyboardType: TextInputType.name,
                                   textCapitalization: TextCapitalization.words,
-                                  validator: (v) => _wajib(v, 'Nama'),
+                                  validator: (v) => _wajib(v, 'Name'),
                                 ),
-                                const SizedBox(height: 16),
+                                const SizedBox(height: 28),
                                 _Field(
                                   label: 'Email',
                                   controller: _email,
-                                  hint: 'nama@perusahaan.com',
-                                  icon: Icons.mail_outline,
+                                  hint: 'name@company.com',
+                                  icon: Icons.mail,
                                   keyboardType: TextInputType.emailAddress,
                                   validator: _cekEmail,
                                 ),
-                                const SizedBox(height: 16),
+                                const SizedBox(height: 28),
                                 _Field(
-                                  label: 'No. Telepon',
+                                  label: 'Phone Number',
                                   controller: _telepon,
                                   hint: '08xxxxxxxxxx',
-                                  icon: Icons.phone_outlined,
+                                  icon: Icons.phone,
                                   keyboardType: TextInputType.phone,
                                   validator: _cekTelepon,
                                 ),
-                                const SizedBox(height: 16),
+                                const SizedBox(height: 28),
                                 _Field(
                                   label: 'Password',
                                   controller: _password,
-                                  hint: 'Minimal 8 karakter',
-                                  icon: Icons.lock_outline,
+                                  hint: 'At least 8 characters',
+                                  icon: Icons.lock,
                                   obscure: _hidePassword,
-                                  textInputAction: TextInputAction.done,
                                   validator: _cekPassword,
-                                  onSubmitted: (_) => _simpan(),
-                                  suffix: IconButton(
-                                    tooltip: _hidePassword
-                                        ? 'Tampilkan password'
-                                        : 'Sembunyikan password',
-                                    onPressed: () => setState(
+                                  suffix: _mata(
+                                    _hidePassword,
+                                    () => setState(
                                         () => _hidePassword = !_hidePassword),
-                                    icon: Icon(
-                                      _hidePassword
-                                          ? Icons.visibility_outlined
-                                          : Icons.visibility_off_outlined,
-                                      color: AppColors.black,
-                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 28),
+                                _Field(
+                                  label: 'Confirm Password',
+                                  controller: _konfirmasi,
+                                  hint: 'Repeat password',
+                                  icon: Icons.lock,
+                                  obscure: _hideKonfirmasi,
+                                  textInputAction: TextInputAction.done,
+                                  validator: _cekKonfirmasi,
+                                  onSubmitted: (_) => _simpan(),
+                                  suffix: _mata(
+                                    _hideKonfirmasi,
+                                    () => setState(() =>
+                                        _hideKonfirmasi = !_hideKonfirmasi),
                                   ),
                                 ),
                               ],
@@ -278,16 +320,33 @@ class _AddSalesScreenState extends State<AddSalesScreen> {
                         ),
                       ),
                     ),
-            
                   ),
                 ),
               ),
             ),
-            ),
-            ),
-            _BottomBar(
-              onBack: () => Navigator.of(context).maybePop(),
-              onSave: _simpan,
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
+              child: SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: FilledButton(
+                  onPressed: _simpan,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.red,
+                    foregroundColor: AppColors.white,
+                    minimumSize: Size.zero,
+                    shape: const StadiumBorder(),
+                  ),
+                  child: Text(
+                    'SAVE',
+                    style: GoogleFonts.poppins(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.3,
+                    ),
+                  ),
+                ),
+              ),
             ),
           ],
         ),
@@ -300,19 +359,19 @@ class _AddSalesScreenState extends State<AddSalesScreen> {
 /// kalau belum, tampilkan inisial nama (ikut berubah saat nama diketik).
 class _FotoPicker extends StatelessWidget {
   const _FotoPicker({
+    required this.id,
     required this.nama,
     required this.foto,
     required this.onTap,
   });
 
+  final int id;
   final TextEditingController nama;
   final Uint8List? foto;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final gambar = foto;
-
     return InkWell(
       customBorder: const CircleBorder(),
       onTap: onTap,
@@ -322,33 +381,27 @@ class _FotoPicker extends StatelessWidget {
         child: Stack(
           children: [
             Positioned.fill(
-              child: gambar != null
-                  ? CircleAvatar(
-                      backgroundColor: AppColors.grey,
-                      backgroundImage: MemoryImage(gambar),
-                    )
-                  : ValueListenableBuilder<TextEditingValue>(
-                      valueListenable: nama,
-                      builder: (_, value, __) {
-                        final teks = value.text.trim().isEmpty
-                            ? null
-                            : Sales(id: 0, nama: value.text).inisial;
-                        return CircleAvatar(
-                          backgroundColor: AppColors.grey,
-                          child: teks == null
-                              ? const Icon(Icons.person,
-                                  size: 48, color: AppColors.black)
-                              : Text(
-                                  teks,
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 32,
-                                    fontWeight: FontWeight.w600,
-                                    color: AppColors.black,
-                                  ),
-                                ),
-                        );
-                      },
-                    ),
+              child: ValueListenableBuilder<TextEditingValue>(
+                valueListenable: nama,
+                builder: (_, value, __) {
+                  final kosong = value.text.trim().isEmpty && foto == null;
+                  if (kosong) {
+                    return Container(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: AppColors.grey,
+                        border: Border.all(color: Colors.white38, width: 2),
+                      ),
+                      child: const Icon(Icons.person,
+                          size: 48, color: AppColors.black),
+                    );
+                  }
+                  return SalesAvatar(
+                    sales: Sales(id: id, nama: value.text, fotoBytes: foto),
+                    size: 96,
+                  );
+                },
+              ),
             ),
             Positioned(
               right: 0,
@@ -359,7 +412,8 @@ class _FotoPicker extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: AppColors.red,
                   shape: BoxShape.circle,
-                  border: Border.all(color: AppColors.white, width: 2),
+                  border:
+                      Border.all(color: ManagerColors.calendar, width: 2),
                 ),
                 child: const Icon(Icons.camera_alt,
                     size: 16, color: AppColors.white),
@@ -378,7 +432,7 @@ class _FotoMenuItem extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.onTap,
-    this.color = AppColors.black,
+    this.color = AppColors.white,
   });
 
   final IconData icon;
@@ -403,7 +457,7 @@ class _FotoMenuItem extends StatelessWidget {
   }
 }
 
-/// Satu kolom isian: label di atas, kotak abu muda di bawahnya.
+/// Satu kolom isian: label di atas, kotak gelap di bawahnya.
 class _Field extends StatelessWidget {
   const _Field({
     required this.label,
@@ -444,9 +498,9 @@ class _Field extends StatelessWidget {
         Text(
           label,
           style: GoogleFonts.poppins(
-            fontSize: 13,
+            fontSize: 12.5,
             fontWeight: FontWeight.w600,
-            color: AppColors.black,
+            color: Colors.white70,
           ),
         ),
         const SizedBox(height: 6),
@@ -459,90 +513,31 @@ class _Field extends StatelessWidget {
           textInputAction: textInputAction,
           onFieldSubmitted: onSubmitted,
           cursorColor: AppColors.red,
-          style: GoogleFonts.poppins(fontSize: 15, color: AppColors.black),
+          style: GoogleFonts.poppins(fontSize: 14.5, color: AppColors.white),
           decoration: InputDecoration(
             hintText: hint,
             hintStyle: GoogleFonts.poppins(
               fontSize: 14,
-              color: Colors.black38,
+              color: Colors.white38,
             ),
-            errorStyle: GoogleFonts.poppins(fontSize: 12),
-            prefixIcon: Icon(icon, color: Colors.black54),
+            errorStyle: GoogleFonts.poppins(
+              fontSize: 12,
+              color: const Color(0xFFFF8A8A),
+            ),
+            prefixIcon: Icon(icon, size: 20, color: Colors.white54),
             suffixIcon: suffix,
             filled: true,
-            fillColor: const Color(0xFFF1F1F1),
+            fillColor: _warnaKolom,
             contentPadding:
                 const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
             border: _border(Colors.transparent),
             enabledBorder: _border(Colors.transparent),
             focusedBorder: _border(AppColors.red),
-            errorBorder: _border(AppColors.red),
+            errorBorder: _border(const Color(0xFFFF8A8A)),
             focusedErrorBorder: _border(AppColors.red),
           ),
         ),
       ],
-    );
-  }
-}
-
-/// Baris bawah: "back" di kiri, tombol SIMPAN di kanan (gaya sama dengan
-/// layar Visit).
-class _BottomBar extends StatelessWidget {
-  const _BottomBar({required this.onBack, required this.onSave});
-
-  final VoidCallback onBack;
-  final VoidCallback onSave;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 12, 24, 12),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          InkWell(
-            borderRadius: BorderRadius.circular(8),
-            onTap: onBack,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.chevron_left,
-                      size: 24, color: AppColors.white),
-                  Text(
-                    'back',
-                    style: GoogleFonts.poppins(
-                      fontSize: 28,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.white,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          SizedBox(
-            width: 183,
-            height: 40,
-            child: FilledButton(
-              onPressed: onSave,
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.red,
-                foregroundColor: AppColors.white,
-                shape: const StadiumBorder(),
-              ),
-              child: Text(
-                'Simpan',
-                style: GoogleFonts.poppins(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

@@ -8,6 +8,8 @@ import '../../../data/models/visit.dart';
 import '../../../utils/date_id.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/manager_colors.dart';
+import 'sales_avatar.dart';
+import 'visit_card.dart';
 
 /// Pilihan toko di form. TODO: ganti dengan daftar dari modul Customer / API.
 const _tokoContoh = [
@@ -17,10 +19,15 @@ const _tokoContoh = [
   'TOKO KEMBALI DJAYA',
 ];
 
+const _panel = Color(0xFF565656);
+const _warnaKolom = Color(0xFF3F3F3F);
+const _merahMuda = Color(0xFFFF8A8A);
+
 /// Layar "Edit Visit": Manager mengatur jadwal kunjungan satu sales.
 /// Dibuka dari tombol EDIT di VisitScreen. Ketuk pensil / "Tambah Kunjungan"
 /// untuk membuka form (bottom sheet). Tombol SIMPAN menutup layar dan
-/// mengembalikan daftar kunjungan terbaru; "back" membatalkan semua perubahan.
+/// mengembalikan daftar kunjungan terbaru; "Batal" / back membatalkan semua
+/// perubahan.
 class EditVisitScreen extends StatefulWidget {
   const EditVisitScreen({
     super.key,
@@ -60,9 +67,9 @@ class _EditVisitScreenState extends State<EditVisitScreen> {
     final hasil = await showModalBottomSheet<_HasilForm>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppColors.white,
+      backgroundColor: _panel,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
       ),
       builder: (_) => _VisitForm(awal: awal, daftarToko: _daftarToko),
     );
@@ -84,45 +91,45 @@ class _EditVisitScreenState extends State<EditVisitScreen> {
       }
       _urutkan();
     });
-    _info(awal == null ? 'Kunjungan ditambahkan' : 'Kunjungan diperbarui');
+    _info(awal == null ? 'Visit added' : 'Visit updated');
   }
 
   Future<void> _hapus(Visit v) async {
     final yakin = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.white,
+        backgroundColor: _panel,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text(
-          'Hapus kunjungan?',
+          'Delete visit?',
           style: GoogleFonts.poppins(
             fontSize: 17,
             fontWeight: FontWeight.w700,
-            color: AppColors.black,
+            color: AppColors.white,
           ),
         ),
         content: Text(
-          '${v.tokoNama} · ${formatTanggal(v.tanggal)} akan dihapus dari jadwal.',
-          style: GoogleFonts.poppins(fontSize: 13.5, color: Colors.black54),
+          '${v.tokoNama} · ${formatTanggal(v.tanggal)} will be removed from the schedule.',
+          style: GoogleFonts.poppins(fontSize: 13.5, color: Colors.white70),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
             child: Text(
-              'Batal',
+              'Cancel',
               style: GoogleFonts.poppins(
                 fontWeight: FontWeight.w600,
-                color: AppColors.black,
+                color: AppColors.white,
               ),
             ),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             child: Text(
-              'Hapus',
+              'Delete',
               style: GoogleFonts.poppins(
                 fontWeight: FontWeight.w700,
-                color: AppColors.red,
+                color: _merahMuda,
               ),
             ),
           ),
@@ -131,7 +138,7 @@ class _EditVisitScreenState extends State<EditVisitScreen> {
     );
     if (yakin != true || !mounted) return;
     setState(() => _visits.removeWhere((x) => x.id == v.id));
-    _info('Kunjungan dihapus');
+    _info('Visit deleted');
   }
 
   @override
@@ -141,36 +148,49 @@ class _EditVisitScreenState extends State<EditVisitScreen> {
       body: SafeArea(
         child: Column(
           children: [
+            // Header: tombol back + judul (sama seperti layar Visit).
             Padding(
-              padding: const EdgeInsets.fromLTRB(24, 8, 24, 12),
+              padding: const EdgeInsets.fromLTRB(24, 8, 24, 14),
               child: SizedBox(
                 height: 44,
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    'Edit Visit',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.poppins(
-                      fontSize: 32,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.white,
+                child: Row(
+                  children: [
+                    Material(
+                      color: const Color(0x1AFFFFFF),
+                      borderRadius: BorderRadius.circular(12),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(12),
+                        onTap: () => Navigator.of(context).maybePop(),
+                        child: const SizedBox(
+                          width: 44,
+                          height: 44,
+                          child: Icon(Icons.chevron_left,
+                              size: 28, color: AppColors.white),
+                        ),
+                      ),
                     ),
-                  ),
+                    const SizedBox(width: 12),
+                    Text(
+                      'Edit Visit',
+                      style: GoogleFonts.poppins(
+                        fontSize: 30,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.white,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: _SalesInfo(sales: widget.sales, jumlah: _visits.length),
-            ),
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.fromLTRB(24, 14, 24, 8),
+                padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
                 children: [
+                  _SalesInfo(sales: widget.sales, jumlah: _visits.length),
+                  const SizedBox(height: 12),
                   for (final v in _visits)
                     Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
+                      padding: const EdgeInsets.only(bottom: 9),
                       child: _EditVisitCard(
                         visit: v,
                         onEdit: () => _bukaForm(v),
@@ -182,7 +202,7 @@ class _EditVisitScreenState extends State<EditVisitScreen> {
                       padding: const EdgeInsets.symmetric(vertical: 24),
                       child: Center(
                         child: Text(
-                          'Belum ada kunjungan',
+                          'No visits yet',
                           style: GoogleFonts.poppins(
                             fontSize: 14,
                             color: Colors.white70,
@@ -195,7 +215,7 @@ class _EditVisitScreenState extends State<EditVisitScreen> {
               ),
             ),
             _BottomBar(
-              onBack: () => Navigator.of(context).maybePop(),
+              onBatal: () => Navigator.of(context).maybePop(),
               onSave: () => Navigator.of(context).pop(_visits),
             ),
           ],
@@ -214,35 +234,16 @@ class _SalesInfo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bytes = sales.fotoBytes;
-    final url = sales.fotoUrl;
-    final ImageProvider? gambar = bytes != null
-        ? MemoryImage(bytes)
-        : (url != null && url.isNotEmpty ? NetworkImage(url) : null);
-
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      padding: const EdgeInsets.fromLTRB(10, 10, 14, 10),
       decoration: BoxDecoration(
-        color: ManagerColors.calendar,
-        borderRadius: BorderRadius.circular(16),
+        color: _panel,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.white10),
       ),
       child: Row(
         children: [
-          CircleAvatar(
-            radius: 20,
-            backgroundColor: AppColors.grey,
-            backgroundImage: gambar,
-            child: gambar != null
-                ? null
-                : Text(
-                    sales.inisial,
-                    style: GoogleFonts.poppins(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.black,
-                    ),
-                  ),
-          ),
+          SalesAvatar(sales: sales, size: 44),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -259,9 +260,9 @@ class _SalesInfo extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  '$jumlah kunjungan',
+                  '$jumlah visits',
                   style: GoogleFonts.poppins(
-                    fontSize: 12,
+                    fontSize: 11.5,
                     color: Colors.white70,
                   ),
                 ),
@@ -269,12 +270,12 @@ class _SalesInfo extends StatelessWidget {
             ),
           ),
           Text(
-            'Ketuk pensil\nuntuk mengubah',
+            'Set store & date\nof visits',
             textAlign: TextAlign.right,
             style: GoogleFonts.poppins(
-              fontSize: 11,
+              fontSize: 10.5,
               height: 1.3,
-              color: Colors.white60,
+              color: Colors.white70,
             ),
           ),
         ],
@@ -283,7 +284,8 @@ class _SalesInfo extends StatelessWidget {
   }
 }
 
-/// Kartu kunjungan versi edit: ada tombol pensil dan tempat sampah.
+/// Kartu kunjungan versi edit: sama dengan VisitCard, plus tombol pensil
+/// dan tempat sampah di kanan.
 class _EditVisitCard extends StatelessWidget {
   const _EditVisitCard({
     required this.visit,
@@ -297,107 +299,103 @@ class _EditVisitCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: ManagerColors.listCard,
-      borderRadius: BorderRadius.circular(12),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    visit.tokoNama,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.poppins(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.white,
-                    ),
-                  ),
-                  Text(
-                    formatTanggal(visit.tanggal),
-                    style: GoogleFonts.poppins(
-                      fontSize: 13,
-                      color: Colors.white,
-                    ),
-                  ),
-                  if (visit.catatan.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 3),
-                      child: Text(
-                        visit.catatan,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.poppins(
-                          fontSize: 11.5,
-                          color: Colors.white60,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: ManagerColors.listCard,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white10),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 48,
+            height: 54,
+            decoration: BoxDecoration(
+              color: const Color(0x38000000),
+              borderRadius: BorderRadius.circular(12),
             ),
-            const SizedBox(width: 8),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                _StatusChip(status: visit.status),
-                const SizedBox(height: 8),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _AksiIcon(
-                      tooltip: 'Ubah',
-                      icon: Icons.edit,
-                      background: AppColors.white,
-                      foreground: AppColors.black,
-                      onTap: onEdit,
-                    ),
-                    const SizedBox(width: 8),
-                    _AksiIcon(
-                      tooltip: 'Hapus',
-                      icon: Icons.delete,
-                      background: ManagerColors.editButton,
-                      foreground: AppColors.white,
-                      onTap: onDelete,
-                    ),
-                  ],
+                Text(
+                  '${visit.tanggal.day}',
+                  style: GoogleFonts.poppins(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    height: 1.05,
+                    color: AppColors.white,
+                  ),
+                ),
+                Text(
+                  singkatBulan(visit.tanggal.month),
+                  style: GoogleFonts.poppins(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.6,
+                    color: Colors.white70,
+                  ),
                 ),
               ],
             ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _StatusChip extends StatelessWidget {
-  const _StatusChip({required this.status});
-
-  final VisitStatus status;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 24,
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: AppColors.white,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Text(
-        status.label,
-        style: GoogleFonts.poppins(
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-          color: AppColors.black,
-        ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  visit.tokoNama.toUpperCase(),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    height: 1.25,
+                    color: AppColors.white,
+                  ),
+                ),
+                Text(
+                  formatTanggal(visit.tanggal),
+                  style: GoogleFonts.poppins(
+                    fontSize: 11.5,
+                    color: Colors.white70,
+                  ),
+                ),
+                const SizedBox(height: 5),
+                VisitStatusPill(status: visit.tampilan),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          if (visit.status == VisitStatus.scheduled)
+            Column(
+              children: [
+                _AksiIcon(
+                  tooltip: 'Edit',
+                  icon: Icons.edit,
+                  background: const Color(0x24FFFFFF),
+                  onTap: onEdit,
+                ),
+                const SizedBox(height: 6),
+                _AksiIcon(
+                  tooltip: 'Delete',
+                  icon: Icons.delete,
+                  background: ManagerColors.editButton,
+                  onTap: onDelete,
+                ),
+              ],
+            )
+          else
+            const Tooltip(
+              message: 'Already filled by Sales, cannot be changed',
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: 8),
+                child: Icon(Icons.lock_outline,
+                    size: 20, color: Colors.white38),
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -408,14 +406,12 @@ class _AksiIcon extends StatelessWidget {
     required this.tooltip,
     required this.icon,
     required this.background,
-    required this.foreground,
     required this.onTap,
   });
 
   final String tooltip;
   final IconData icon;
   final Color background;
-  final Color foreground;
   final VoidCallback onTap;
 
   @override
@@ -431,7 +427,7 @@ class _AksiIcon extends StatelessWidget {
           child: SizedBox(
             width: 34,
             height: 34,
-            child: Icon(icon, size: 18, color: foreground),
+            child: Icon(icon, size: 18, color: AppColors.white),
           ),
         ),
       ),
@@ -447,27 +443,30 @@ class _TambahButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return CustomPaint(
-      painter: const _DashedBorderPainter(),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: onTap,
-        child: SizedBox(
-          height: 56,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.add, color: AppColors.white),
-              const SizedBox(width: 8),
-              Text(
-                'Tambah Kunjungan',
-                style: GoogleFonts.poppins(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.white,
+    return Padding(
+      padding: const EdgeInsets.only(top: 1),
+      child: CustomPaint(
+        painter: const _DashedBorderPainter(),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: onTap,
+          child: SizedBox(
+            height: 50,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.add, size: 20, color: AppColors.white),
+                const SizedBox(width: 8),
+                Text(
+                  'Add Visit',
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.white,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -483,10 +482,10 @@ class _DashedBorderPainter extends CustomPainter {
     final paint = Paint()
       ..color = Colors.white54
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 2;
+      ..strokeWidth = 1.5;
     final path = Path()
       ..addRRect(
-        RRect.fromRectAndRadius(Offset.zero & size, const Radius.circular(12)),
+        RRect.fromRectAndRadius(Offset.zero & size, const Radius.circular(16)),
       );
     for (final metric in path.computeMetrics()) {
       double d = 0;
@@ -504,57 +503,61 @@ class _DashedBorderPainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
-/// Baris bawah: "back" (batal) di kiri, SIMPAN di kanan.
+/// Baris bawah: Batal di kiri, SIMPAN (merah) di kanan.
 class _BottomBar extends StatelessWidget {
-  const _BottomBar({required this.onBack, required this.onSave});
+  const _BottomBar({required this.onBatal, required this.onSave});
 
-  final VoidCallback onBack;
+  final VoidCallback onBatal;
   final VoidCallback onSave;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 12, 24, 12),
+      padding: const EdgeInsets.fromLTRB(24, 10, 24, 16),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          InkWell(
-            borderRadius: BorderRadius.circular(8),
-            onTap: onBack,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.chevron_left,
-                      size: 24, color: AppColors.white),
-                  Text(
-                    'back',
-                    style: GoogleFonts.poppins(
-                      fontSize: 28,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.white,
-                    ),
+          Expanded(
+            flex: 36,
+            child: SizedBox(
+              height: 48,
+              child: FilledButton(
+                onPressed: onBatal,
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0x24FFFFFF),
+                  foregroundColor: AppColors.white,
+                  minimumSize: Size.zero,
+                  shape: const StadiumBorder(),
+                ),
+                child: Text(
+                  'Cancel',
+                  style: GoogleFonts.poppins(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
                   ),
-                ],
+                ),
               ),
             ),
           ),
-          SizedBox(
-            width: 183,
-            height: 40,
-            child: FilledButton(
-              onPressed: onSave,
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.red,
-                foregroundColor: AppColors.white,
-                shape: const StadiumBorder(),
-              ),
-              child: Text(
-                'Simpan',
-                style: GoogleFonts.poppins(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700,
+          const SizedBox(width: 10),
+          Expanded(
+            flex: 64,
+            child: SizedBox(
+              height: 48,
+              child: FilledButton(
+                onPressed: onSave,
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.red,
+                  foregroundColor: AppColors.white,
+                  minimumSize: Size.zero,
+                  shape: const StadiumBorder(),
+                ),
+                child: Text(
+                  'SAVE',
+                  style: GoogleFonts.poppins(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.3,
+                  ),
                 ),
               ),
             ),
@@ -581,13 +584,13 @@ class _HasilForm {
 }
 
 Widget _label(String teks) => Padding(
-      padding: const EdgeInsets.only(bottom: 5),
+      padding: const EdgeInsets.only(bottom: 6),
       child: Text(
         teks,
         style: GoogleFonts.poppins(
-          fontSize: 13,
+          fontSize: 12.5,
           fontWeight: FontWeight.w600,
-          color: AppColors.black,
+          color: Colors.white70,
         ),
       ),
     );
@@ -599,16 +602,16 @@ OutlineInputBorder _garis(Color warna) => OutlineInputBorder(
 
 InputDecoration _dekor({String? hint, Widget? suffix}) => InputDecoration(
       hintText: hint,
-      hintStyle: GoogleFonts.poppins(fontSize: 14, color: Colors.black38),
-      errorStyle: GoogleFonts.poppins(fontSize: 12),
+      hintStyle: GoogleFonts.poppins(fontSize: 14, color: Colors.white38),
+      errorStyle: GoogleFonts.poppins(fontSize: 12, color: _merahMuda),
       suffixIcon: suffix,
       filled: true,
-      fillColor: const Color(0xFFF1F1F1),
+      fillColor: _warnaKolom,
       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
       border: _garis(Colors.transparent),
       enabledBorder: _garis(Colors.transparent),
       focusedBorder: _garis(AppColors.red),
-      errorBorder: _garis(AppColors.red),
+      errorBorder: _garis(_merahMuda),
       focusedErrorBorder: _garis(AppColors.red),
     );
 
@@ -626,10 +629,8 @@ class _VisitForm extends StatefulWidget {
 class _VisitFormState extends State<_VisitForm> {
   final _formKey = GlobalKey<FormState>();
   final _tglText = TextEditingController();
-  late final TextEditingController _catatan;
   String? _toko;
   DateTime? _tanggal;
-  late VisitStatus _status;
 
   @override
   void initState() {
@@ -637,15 +638,12 @@ class _VisitFormState extends State<_VisitForm> {
     final v = widget.awal;
     _toko = v?.tokoNama;
     _tanggal = v?.tanggal;
-    _status = v?.status ?? VisitStatus.pending;
-    _catatan = TextEditingController(text: v?.catatan ?? '');
     _isiTanggal();
   }
 
   @override
   void dispose() {
     _tglText.dispose();
-    _catatan.dispose();
     super.dispose();
   }
 
@@ -661,8 +659,13 @@ class _VisitFormState extends State<_VisitForm> {
       firstDate: DateTime(2020),
       lastDate: DateTime(2100),
       builder: (ctx, child) => Theme(
-        data: ThemeData.light().copyWith(
-          colorScheme: const ColorScheme.light(primary: AppColors.red),
+        data: ThemeData.dark().copyWith(
+          colorScheme: const ColorScheme.dark(
+            primary: AppColors.red,
+            onPrimary: AppColors.white,
+            surface: _panel,
+            onSurface: AppColors.white,
+          ),
         ),
         child: child!,
       ),
@@ -676,13 +679,16 @@ class _VisitFormState extends State<_VisitForm> {
 
   void _simpan() {
     if (!(_formKey.currentState?.validate() ?? false)) return;
-    final visit = Visit(
-      id: widget.awal?.id ?? DateTime.now().millisecondsSinceEpoch,
-      tokoNama: _toko!,
-      tanggal: _tanggal!,
-      status: _status,
-      catatan: _catatan.text.trim(),
-    );
+    // Manager hanya mengatur toko dan tanggal. Jadwal baru berstatus
+    // scheduled; status & catatan hasil kunjungan diisi oleh Sales.
+    final awal = widget.awal;
+    final visit = awal != null
+        ? awal.copyWith(tokoNama: _toko!, tanggal: _tanggal!)
+        : Visit(
+            id: DateTime.now().millisecondsSinceEpoch,
+            tokoNama: _toko!,
+            tanggal: _tanggal!,
+          );
     Navigator.of(context).pop(_HasilForm.simpan(visit));
   }
 
@@ -695,7 +701,7 @@ class _VisitFormState extends State<_VisitForm> {
       padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
       child: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 10, 20, 16),
+          padding: const EdgeInsets.fromLTRB(24, 10, 24, 16),
           child: Form(
             key: _formKey,
             child: Column(
@@ -707,32 +713,33 @@ class _VisitFormState extends State<_VisitForm> {
                     width: 40,
                     height: 4,
                     decoration: BoxDecoration(
-                      color: Colors.black26,
+                      color: Colors.white30,
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 14),
                 Text(
-                  edit ? 'Edit Kunjungan' : 'Tambah Kunjungan',
+                  edit ? 'Edit Visit' : 'Add Visit',
                   style: GoogleFonts.poppins(
                     fontSize: 20,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.black,
+                    color: AppColors.white,
                   ),
                 ),
                 const SizedBox(height: 14),
-                _label('Nama Toko'),
+                _label('Store'),
                 DropdownButtonFormField<String>(
                   // ignore: deprecated_member_use
                   value: _toko,
                   isExpanded: true,
-                  dropdownColor: AppColors.white,
+                  dropdownColor: _panel,
+                  iconEnabledColor: Colors.white70,
                   style: GoogleFonts.poppins(
                     fontSize: 14.5,
-                    color: AppColors.black,
+                    color: AppColors.white,
                   ),
-                  decoration: _dekor(hint: 'Pilih toko...'),
+                  decoration: _dekor(hint: 'Select store...'),
                   items: [
                     for (final t in widget.daftarToko)
                       DropdownMenuItem(
@@ -741,152 +748,61 @@ class _VisitFormState extends State<_VisitForm> {
                       ),
                   ],
                   onChanged: (v) => setState(() => _toko = v),
-                  validator: (v) => v == null ? 'Toko wajib dipilih' : null,
+                  validator: (v) => v == null ? 'Store is required' : null,
                 ),
                 const SizedBox(height: 12),
-                _label('Tanggal Kunjungan'),
+                _label('Date'),
                 TextFormField(
                   controller: _tglText,
                   readOnly: true,
                   onTap: _pilihTanggal,
                   style: GoogleFonts.poppins(
                     fontSize: 14.5,
-                    color: AppColors.black,
+                    color: AppColors.white,
                   ),
                   decoration: _dekor(
-                    hint: 'Pilih tanggal',
+                    hint: 'Select date',
                     suffix: const Icon(Icons.calendar_today_outlined,
-                        size: 20, color: Colors.black54),
+                        size: 20, color: Colors.white70),
                   ),
                   validator: (_) =>
-                      _tanggal == null ? 'Tanggal wajib diisi' : null,
+                      _tanggal == null ? 'Date is required' : null,
                 ),
-                const SizedBox(height: 12),
-                _label('Status'),
-                Row(
-                  children: [
-                    for (final s in VisitStatus.values) ...[
-                      if (s != VisitStatus.values.first)
-                        const SizedBox(width: 8),
-                      Expanded(
-                        child: _StatusPilihan(
-                          status: s,
-                          dipilih: s == _status,
-                          onTap: () => setState(() => _status = s),
-                        ),
+                const SizedBox(height: 18),
+                SizedBox(
+                  height: 48,
+                  child: FilledButton(
+                    onPressed: _simpan,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.red,
+                      foregroundColor: AppColors.white,
+                      minimumSize: Size.zero,
+                      shape: const StadiumBorder(),
+                    ),
+                    child: Text(
+                      'SAVE',
+                      style: GoogleFonts.poppins(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.3,
                       ),
-                    ],
-                  ],
-                ),
-                const SizedBox(height: 12),
-                _label('Catatan (opsional)'),
-                TextFormField(
-                  controller: _catatan,
-                  maxLines: 2,
-                  textCapitalization: TextCapitalization.sentences,
-                  cursorColor: AppColors.red,
-                  style: GoogleFonts.poppins(
-                    fontSize: 14.5,
-                    color: AppColors.black,
+                    ),
                   ),
-                  decoration:
-                      _dekor(hint: 'Contoh: bawa katalog produk baru'),
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      flex: 10,
-                      child: OutlinedButton(
-                        onPressed: () => Navigator.of(context).pop(),
-                        style: OutlinedButton.styleFrom(
-                          minimumSize: const Size(0, 44),
-                          foregroundColor: AppColors.black,
-                          side: const BorderSide(color: Colors.black26),
-                          shape: const StadiumBorder(),
-                        ),
-                        child: Text(
-                          'Batal',
-                          style: GoogleFonts.poppins(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      flex: 14,
-                      child: FilledButton(
-                        onPressed: _simpan,
-                        style: FilledButton.styleFrom(
-                          minimumSize: const Size(0, 44),
-                          backgroundColor: AppColors.red,
-                          foregroundColor: AppColors.white,
-                          shape: const StadiumBorder(),
-                        ),
-                        child: Text(
-                          'Simpan',
-                          style: GoogleFonts.poppins(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
                 ),
                 if (edit)
                   TextButton(
                     onPressed: () =>
                         Navigator.of(context).pop(const _HasilForm.hapus()),
                     child: Text(
-                      'Hapus kunjungan ini',
+                      'Delete visit',
                       style: GoogleFonts.poppins(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
-                        color: AppColors.red,
+                        color: _merahMuda,
                       ),
                     ),
                   ),
               ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _StatusPilihan extends StatelessWidget {
-  const _StatusPilihan({
-    required this.status,
-    required this.dipilih,
-    required this.onTap,
-  });
-
-  final VisitStatus status;
-  final bool dipilih;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: dipilih ? AppColors.red : const Color(0xFFF1F1F1),
-      borderRadius: BorderRadius.circular(12),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: onTap,
-        child: SizedBox(
-          height: 40,
-          child: Center(
-            child: Text(
-              status.label,
-              style: GoogleFonts.poppins(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: dipilih ? AppColors.white : AppColors.black,
-              ),
             ),
           ),
         ),

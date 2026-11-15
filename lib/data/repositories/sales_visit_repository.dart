@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:dio/dio.dart';
 
 import '../services/api_client.dart';
@@ -9,9 +11,12 @@ abstract class SalesVisitRepository {
   Future<List<Visit>> getVisits(int salesId);
 }
 
-/// Data sementara (isi dari frame Figma). Dipakai selama endpoint Laravel
-/// belum siap. Untuk pindah ke API, ganti default `repository` di
-/// SalesVisitScreen menjadi ApiSalesVisitRepository().
+/// Data sementara. Dipakai selama endpoint Laravel belum siap. Untuk pindah ke
+/// API, ganti default `repository` di SalesVisitScreen menjadi
+/// ApiSalesVisitRepository().
+///
+/// Kunjungan dibuat otomatis di sekitar tanggal hari ini (dan berbeda untuk
+/// tiap sales), jadi kalender dan ringkasan bulan ini selalu ada isinya.
 class DummySalesVisitRepository implements SalesVisitRepository {
   const DummySalesVisitRepository();
 
@@ -24,7 +29,9 @@ class DummySalesVisitRepository implements SalesVisitRepository {
   @override
   Future<List<Visit>> getVisits(int salesId) async {
     await Future<void>.delayed(const Duration(milliseconds: 400));
-    return _visits; // data dummy sama untuk semua sales
+    // Sales yang baru ditambahkan dari layar Add Sales belum punya kunjungan.
+    if (!_sales.any((s) => s.id == salesId)) return [];
+    return _bangkitkan(salesId);
   }
 
   static const _sales = [
@@ -39,15 +46,52 @@ class DummySalesVisitRepository implements SalesVisitRepository {
     Sales(id: 9, nama: 'Heru Semeru'),
   ];
 
-  static final _visits = [
-    Visit(id: 1, tokoNama: 'TOKO AKBAR AMIRUL', tanggal: DateTime(2026, 10, 23), status: VisitStatus.done),
-    Visit(id: 2, tokoNama: 'TOKO AKBAR AMIRUL', tanggal: DateTime(2026, 10, 23), status: VisitStatus.done),
-    Visit(id: 3, tokoNama: 'TOKO AKBAR AMIRUL', tanggal: DateTime(2026, 10, 23), status: VisitStatus.process),
-    Visit(id: 4, tokoNama: 'TOKO AKBAR AMIRUL', tanggal: DateTime(2026, 10, 23), status: VisitStatus.done),
-    Visit(id: 5, tokoNama: 'TOKO PURNAMA ABADI SENTOSA', tanggal: DateTime(2026, 11, 3), status: VisitStatus.done),
-    Visit(id: 6, tokoNama: 'TOKO JAYA AGUNG MANDIRI', tanggal: DateTime(2026, 11, 5), status: VisitStatus.process),
-    Visit(id: 7, tokoNama: 'TOKO KEMBALI DJAYA', tanggal: DateTime(2026, 11, 12), status: VisitStatus.pending),
+  static const _toko = [
+    'TOKO AKBAR AMIRUL',
+    'TOKO PURNAMA ABADI SENTOSA',
+    'TOKO JAYA AGUNG MANDIRI',
+    'TOKO KEMBALI DJAYA',
+    'TOKO SINAR JAYA',
+    'TOKO MAKMUR SENTOSA',
+    'TOKO BERKAH ABADI',
   ];
+
+  static List<Visit> _bangkitkan(int salesId) {
+    final r = math.Random(salesId * 7919 + 13); // hasil sama tiap dibuka
+    final now = DateTime.now();
+    final hariIni = DateTime(now.year, now.month, now.day);
+    final jumlah = 8 + r.nextInt(6);
+    final hasil = <Visit>[];
+
+    for (var i = 0; i < jumlah; i++) {
+      // Sales bernomor genap punya satu kunjungan hari ini.
+      final geser = (i == 0 && salesId.isEven) ? 0 : r.nextInt(46) - 25;
+      final tanggal =
+          DateTime(hariIni.year, hariIni.month, hariIni.day + geser);
+      // Jadwal lampau: sebagian besar sudah dikunjungi, sebagian tidak jadi,
+      // dan sedikit yang dibiarkan scheduled (tampil sebagai "Terlewat").
+      // Hari ini dan ke depan: scheduled (tampil sebagai "Pending").
+      final VisitStatus status;
+      if (tanggal.isBefore(hariIni)) {
+        final x = r.nextInt(10);
+        status = x < 7
+            ? VisitStatus.visited
+            : (x < 9 ? VisitStatus.notVisited : VisitStatus.scheduled);
+      } else {
+        status = VisitStatus.scheduled;
+      }
+      hasil.add(
+        Visit(
+          id: salesId * 100 + i + 1,
+          tokoNama: _toko[r.nextInt(_toko.length)],
+          tanggal: tanggal,
+          status: status,
+        ),
+      );
+    }
+    hasil.sort((a, b) => a.tanggal.compareTo(b.tanggal));
+    return hasil;
+  }
 }
 
 /// Implementasi ke Laravel.
