@@ -1,6 +1,9 @@
 import 'dart:math' as math;
 import 'dart:typed_data';
 
+import 'package:dio/dio.dart';
+import 'package:sfa_mobile/data/services/sales_service.dart';
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
@@ -19,8 +22,9 @@ const _warnaKolom = Color(0xFF3F3F3F);
 /// Layar "Add Sales": form untuk menambah akun sales baru.
 /// Dibuka dari tombol "Add Sales" di SalesVisitScreen dan menutupi navbar.
 ///
-/// Saat ini hanya UI. Setelah tombol SIMPAN ditekan dan form valid, layar
-/// menutup dan mengembalikan objek [Sales] ke layar sebelumnya.
+/// Setelah tombol SAVE ditekan dan form valid, data dikirim ke API
+/// (POST /sales). Kalau berhasil, layar menutup dan mengembalikan objek
+/// [Sales] ke layar sebelumnya.
 class AddSalesScreen extends StatefulWidget {
   const AddSalesScreen({super.key});
 
@@ -37,11 +41,11 @@ class _AddSalesScreenState extends State<AddSalesScreen> {
   final _konfirmasi = TextEditingController();
   bool _hidePassword = true;
   bool _hideKonfirmasi = true;
+  bool _saving = false;
   final _picker = ImagePicker();
   Uint8List? _foto; // foto yang dipilih (null = belum ada)
 
-  // Id sementara; dipakai juga untuk warna avatar supaya warnanya sama
-  // dengan yang tampil di daftar sales.
+  // Dipakai untuk warna avatar pratinjau di lingkaran foto.
   final int _id = DateTime.now().millisecondsSinceEpoch;
 
   @override
@@ -54,17 +58,34 @@ class _AddSalesScreenState extends State<AddSalesScreen> {
     super.dispose();
   }
 
-  void _simpan() {
+  Future<void> _simpan() async {
+    if (_saving) return;
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
-    // TODO: kirim ke API (Manager mendaftarkan akun dengan role sales),
-    // lalu pakai id dari response server, bukan id sementara ini.
-    final baru = Sales(
-      id: _id,
-      nama: _nama.text.trim(),
-      fotoBytes: _foto,
-    );
-    Navigator.of(context).pop(baru);
+    setState(() => _saving = true);
+    try {
+      // Confirm Password hanya dicek di app, server tidak menerimanya.
+      final baru = await SalesService().create(
+        name: _nama.text.trim(),
+        email: _email.text.trim(),
+        phone: _telepon.text.trim(),
+        password: _password.text,
+        photoBytes: _foto,
+      );
+      if (!mounted) return;
+      Navigator.of(context).pop(baru);
+    } on DioException catch (e) {
+      _tampilkanPesan(SalesService.errorMessage(e));
+    } catch (_) {
+      _tampilkanPesan('Something went wrong, please try again');
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  void _tampilkanPesan(String teks) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(teks)));
   }
 
   /// Ketuk lingkaran foto -> muncul menu: kamera, galeri, atau hapus foto.
@@ -126,7 +147,7 @@ class _AddSalesScreenState extends State<AddSalesScreen> {
     try {
       final file = await _picker.pickImage(
         source: sumber,
-        maxWidth: 800, // kecilkan supaya ringan dikirim ke server nanti
+        maxWidth: 800, // kecilkan supaya ringan dikirim ke server
         maxHeight: 800,
         imageQuality: 85,
       );
@@ -135,10 +156,7 @@ class _AddSalesScreenState extends State<AddSalesScreen> {
       if (!mounted) return;
       setState(() => _foto = bytes);
     } catch (_) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Cannot open camera/gallery')),
-      );
+      _tampilkanPesan('Cannot open camera/gallery');
     }
   }
 
@@ -171,15 +189,13 @@ class _AddSalesScreenState extends State<AddSalesScreen> {
   }
 
   Widget _mata(bool tersembunyi, VoidCallback onTap) => IconButton(
-        tooltip: tersembunyi ? 'Show password' : 'Hide password',
-        onPressed: onTap,
-        icon: Icon(
-          tersembunyi
-              ? Icons.visibility_outlined
-              : Icons.visibility_off_outlined,
-          color: Colors.white70,
-        ),
-      );
+    tooltip: tersembunyi ? 'Show password' : 'Hide password',
+    onPressed: onTap,
+    icon: Icon(
+      tersembunyi ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+      color: Colors.white70,
+    ),
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -204,8 +220,11 @@ class _AddSalesScreenState extends State<AddSalesScreen> {
                         child: const SizedBox(
                           width: 44,
                           height: 44,
-                          child: Icon(Icons.chevron_left,
-                              size: 28, color: AppColors.white),
+                          child: Icon(
+                            Icons.chevron_left,
+                            size: 28,
+                            color: AppColors.white,
+                          ),
                         ),
                       ),
                     ),
@@ -222,8 +241,8 @@ class _AddSalesScreenState extends State<AddSalesScreen> {
                 ),
               ),
             ),
-            // Box abu-abu memenuhi sisa layar sampai tombol SIMPAN. Isinya
-            // tersebar merata; kalau layar pendek / keyboard muncul, bisa digulir.
+            // Box abu-abu memenuhi sisa layar sampai tombol SAVE. Kalau layar
+            // pendek / keyboard muncul, isinya bisa digulir.
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -295,7 +314,8 @@ class _AddSalesScreenState extends State<AddSalesScreen> {
                                   suffix: _mata(
                                     _hidePassword,
                                     () => setState(
-                                        () => _hidePassword = !_hidePassword),
+                                      () => _hidePassword = !_hidePassword,
+                                    ),
                                   ),
                                 ),
                                 const SizedBox(height: 28),
@@ -310,8 +330,9 @@ class _AddSalesScreenState extends State<AddSalesScreen> {
                                   onSubmitted: (_) => _simpan(),
                                   suffix: _mata(
                                     _hideKonfirmasi,
-                                    () => setState(() =>
-                                        _hideKonfirmasi = !_hideKonfirmasi),
+                                    () => setState(
+                                      () => _hideKonfirmasi = !_hideKonfirmasi,
+                                    ),
                                   ),
                                 ),
                               ],
@@ -330,21 +351,30 @@ class _AddSalesScreenState extends State<AddSalesScreen> {
                 width: double.infinity,
                 height: 48,
                 child: FilledButton(
-                  onPressed: _simpan,
+                  onPressed: _saving ? null : _simpan,
                   style: FilledButton.styleFrom(
                     backgroundColor: AppColors.red,
                     foregroundColor: AppColors.white,
                     minimumSize: Size.zero,
                     shape: const StadiumBorder(),
                   ),
-                  child: Text(
-                    'SAVE',
-                    style: GoogleFonts.poppins(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.3,
-                    ),
-                  ),
+                  child: _saving
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: AppColors.white,
+                          ),
+                        )
+                      : Text(
+                          'SAVE',
+                          style: GoogleFonts.poppins(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.3,
+                          ),
+                        ),
                 ),
               ),
             ),
@@ -392,8 +422,11 @@ class _FotoPicker extends StatelessWidget {
                         color: AppColors.grey,
                         border: Border.all(color: Colors.white38, width: 2),
                       ),
-                      child: const Icon(Icons.person,
-                          size: 48, color: AppColors.black),
+                      child: const Icon(
+                        Icons.person,
+                        size: 48,
+                        color: AppColors.black,
+                      ),
                     );
                   }
                   return SalesAvatar(
@@ -412,11 +445,13 @@ class _FotoPicker extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: AppColors.red,
                   shape: BoxShape.circle,
-                  border:
-                      Border.all(color: ManagerColors.calendar, width: 2),
+                  border: Border.all(color: ManagerColors.calendar, width: 2),
                 ),
-                child: const Icon(Icons.camera_alt,
-                    size: 16, color: AppColors.white),
+                child: const Icon(
+                  Icons.camera_alt,
+                  size: 16,
+                  color: AppColors.white,
+                ),
               ),
             ),
           ],
@@ -486,9 +521,9 @@ class _Field extends StatelessWidget {
   final ValueChanged<String>? onSubmitted;
 
   OutlineInputBorder _border(Color color) => OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: color, width: 1.5),
-      );
+    borderRadius: BorderRadius.circular(12),
+    borderSide: BorderSide(color: color, width: 1.5),
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -516,10 +551,7 @@ class _Field extends StatelessWidget {
           style: GoogleFonts.poppins(fontSize: 14.5, color: AppColors.white),
           decoration: InputDecoration(
             hintText: hint,
-            hintStyle: GoogleFonts.poppins(
-              fontSize: 14,
-              color: Colors.white38,
-            ),
+            hintStyle: GoogleFonts.poppins(fontSize: 14, color: Colors.white38),
             errorStyle: GoogleFonts.poppins(
               fontSize: 12,
               color: const Color(0xFFFF8A8A),
@@ -528,8 +560,10 @@ class _Field extends StatelessWidget {
             suffixIcon: suffix,
             filled: true,
             fillColor: _warnaKolom,
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 14,
+              vertical: 14,
+            ),
             border: _border(Colors.transparent),
             enabledBorder: _border(Colors.transparent),
             focusedBorder: _border(AppColors.red),

@@ -98,7 +98,7 @@ class ProductDetailScreen extends StatelessWidget {
                                   physics: const ClampingScrollPhysics(),
                                   padding: const EdgeInsets.symmetric(vertical: 4),
                                   itemCount: batches.length,
-                                  separatorBuilder: (_, __) =>
+                                  separatorBuilder: (_, _) =>
                                       const Divider(height: 1, indent: 14, endIndent: 14),
                                   itemBuilder: (_, i) =>
                                       _BatchRow(batch: batches[i], unit: p.unit, first: i == first),

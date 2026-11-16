@@ -1,5 +1,7 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:sfa_mobile/data/services/sales_service.dart';
 
 import '../../../data/models/sales.dart';
 import '../../../data/models/visit.dart';
@@ -23,6 +25,9 @@ class _Ringkasan {
 
 /// Tab "Sales & Visit" milik Manager: daftar sales beserta progres kunjungan
 /// bulan ini. Ketuk satu sales -> VisitScreen.
+///
+/// Daftar sales diambil dari API (GET /sales). Data kunjungan masih lewat
+/// repository.
 class SalesVisitScreen extends StatefulWidget {
   const SalesVisitScreen({
     super.key,
@@ -36,6 +41,7 @@ class SalesVisitScreen extends StatefulWidget {
 }
 
 class _SalesVisitScreenState extends State<SalesVisitScreen> {
+  final _salesService = SalesService();
   List<Sales> _sales = const [];
   final Map<int, _Ringkasan> _ringkasan = {};
   bool _loading = true;
@@ -58,18 +64,28 @@ class _SalesVisitScreenState extends State<SalesVisitScreen> {
   _Ringkasan _hitung(List<Visit> visits) {
     final now = DateTime.now();
     final bulan = visits
-        .where((v) => v.tanggal.year == now.year && v.tanggal.month == now.month)
+        .where(
+          (v) => v.tanggal.year == now.year && v.tanggal.month == now.month,
+        )
         .toList();
     final selesai = bulan.where((v) => v.status == VisitStatus.visited).length;
     return _Ringkasan(total: bulan.length, selesai: selesai);
   }
 
+  /// Kunjungan satu sales. Kalau gagal, anggap kosong supaya daftar sales
+  /// tetap tampil (kunjungan belum terhubung ke API).
+  Future<List<Visit>> _visitsOf(int salesId) async {
+    try {
+      return await widget.repository.getVisits(salesId);
+    } catch (_) {
+      return const <Visit>[];
+    }
+  }
+
   Future<void> _load() async {
     try {
-      final data = await widget.repository.getSales();
-      final hasil = await Future.wait(
-        data.map((s) => widget.repository.getVisits(s.id)),
-      );
+      final data = await _salesService.fetchAll();
+      final hasil = await Future.wait(data.map((s) => _visitsOf(s.id)));
       if (!mounted) return;
       setState(() {
         _sales = data;
@@ -80,8 +96,15 @@ class _SalesVisitScreenState extends State<SalesVisitScreen> {
               MapEntry(data[i].id, _hitung(hasil[i])),
           ]);
         _loading = false;
+        _failed = false;
       });
-    } catch (_) {
+    } catch (e) {
+      debugPrint('LOAD SALES ERROR: $e');
+      if (e is DioException) {
+        debugPrint(
+          'status: ${e.response?.statusCode} | body: ${e.response?.data}',
+        );
+      }
       if (!mounted) return;
       setState(() {
         _failed = true;
@@ -99,9 +122,9 @@ class _SalesVisitScreenState extends State<SalesVisitScreen> {
   }
 
   void _toggleSearch() => setState(() {
-        _searching = !_searching;
-        if (!_searching) _search.clear();
-      });
+    _searching = !_searching;
+    if (!_searching) _search.clear();
+  });
 
   List<Sales> get _shown {
     final q = _search.text.trim().toLowerCase();
@@ -127,14 +150,12 @@ class _SalesVisitScreenState extends State<SalesVisitScreen> {
       MaterialPageRoute(builder: (_) => const AddSalesScreen()),
     );
     if (baru == null || !mounted) return;
-    // TODO: setelah API register siap, muat ulang daftar dari server.
-    setState(() {
-      _sales = [..._sales, baru];
-      _ringkasan[baru.id] = const _Ringkasan(total: 0, selesai: 0);
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('${baru.nama} added')),
-    );
+    // Ambil ulang dari server supaya daftar selalu sama dengan database.
+    await _load();
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('${baru.nama} added')));
   }
 
   @override
@@ -186,7 +207,9 @@ class _SalesVisitScreenState extends State<SalesVisitScreen> {
                       const SizedBox(width: 6),
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 1),
+                          horizontal: 8,
+                          vertical: 1,
+                        ),
                         decoration: BoxDecoration(
                           color: AppColors.glass,
                           borderRadius: BorderRadius.circular(8),
@@ -269,7 +292,7 @@ class _SalesVisitScreenState extends State<SalesVisitScreen> {
     if (list.isEmpty) {
       return Center(
         child: Text(
-          'No sales found',
+          _sales.isEmpty ? 'No sales yet' : 'No sales found',
           style: GoogleFonts.poppins(color: AppColors.white),
         ),
       );
@@ -282,19 +305,25 @@ class _SalesVisitScreenState extends State<SalesVisitScreen> {
         color: AppColors.white,
         borderRadius: BorderRadius.circular(24),
         clipBehavior: Clip.antiAlias,
-        child: ListView.separated(
-          padding: const EdgeInsets.symmetric(vertical: 4),
-          itemCount: list.length,
-          separatorBuilder: (_, _) => const Divider(
-            height: 1,
-            thickness: 1,
-            color: Color(0xFFECECEC),
-          ),
-          itemBuilder: (_, i) => _SalesRow(
-            sales: list[i],
-            ringkasan: _ringkasan[list[i].id] ??
-                const _Ringkasan(total: 0, selesai: 0),
-            onTap: () => _open(list[i]),
+        child: RefreshIndicator(
+          color: AppColors.red,
+          onRefresh: _load,
+          child: ListView.separated(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            itemCount: list.length,
+            separatorBuilder: (_, _) => const Divider(
+              height: 1,
+              thickness: 1,
+              color: Color(0xFFECECEC),
+            ),
+            itemBuilder: (_, i) => _SalesRow(
+              sales: list[i],
+              ringkasan:
+                  _ringkasan[list[i].id] ??
+                  const _Ringkasan(total: 0, selesai: 0),
+              onTap: () => _open(list[i]),
+            ),
           ),
         ),
       ),

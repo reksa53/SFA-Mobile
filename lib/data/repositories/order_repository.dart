@@ -1,6 +1,7 @@
 import 'package:sfa_mobile/data/models/order.dart';
 import 'package:sfa_mobile/data/models/order_item.dart';
 import 'package:sfa_mobile/data/models/product.dart';
+import 'package:sfa_mobile/data/services/product_service.dart';
 
 /// Pilihan toko di pop-up Add Order.
 /// Sementara, ganti dengan model Customer saat API siap.
@@ -12,15 +13,15 @@ class StoreOption {
 }
 
 /// Produk + harga untuk layar cart.
-/// Sementara, harga nanti datang dari API bersama Product.
 class CatalogItem {
   const CatalogItem({required this.product, required this.price});
 
   final Product product;
   final int price;
 
-  bool get available =>
-      product.stock > 0 && product.expiry.isAfter(DateTime.now());
+  /// Stok produk sudah dihitung dari batch yang belum kedaluwarsa,
+  /// jadi cukup cek stok.
+  bool get available => product.stock > 0;
 }
 
 /// Data dummy yang meniru perilaku server: Sales hanya menerima
@@ -51,19 +52,6 @@ class OrderRepository {
 
   final List<Order> _orders = [..._seed];
 
-  static const _prices = {
-    'Indomie Goreng': 3500,
-    'Teh Botol Sosro': 5000,
-    'Beras Premium 5 kg': 68000,
-    'Minyak Goreng Bimoli 2 L': 38000,
-    'Gula Pasir Gulaku 1 kg': 17000,
-    'Kecap Manis Bango 600 ml': 24000,
-    'Garam Dapur Refina 500 gr': 4000,
-    'Kopi Kapal Api 165 gr': 12000,
-    'Susu Kental Manis Frisian Flag': 11000,
-    'Ultra Milk Coklat 250 ml': 6500,
-  };
-
   List<Order> ordersForSales(String salesId) =>
       _orders.where((o) => o.salesId == salesId).toList(growable: false);
 
@@ -76,9 +64,10 @@ class OrderRepository {
         StoreOption(name: 'TOKO NANDA JAYA', address: 'Alamat toko'),
       ];
 
+  /// Katalog untuk layar cart: produk aktif beserta harganya.
   List<CatalogItem> catalog() => [
-        for (final p in dummyProducts)
-          CatalogItem(product: p, price: _prices[p.name] ?? 0),
+        for (final p in ProductService.instance.active)
+          CatalogItem(product: p, price: p.price),
       ];
 
   Order submit({

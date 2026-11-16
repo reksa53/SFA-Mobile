@@ -1,25 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:sfa_mobile/data/models/customer_store.dart';
+import 'package:sfa_mobile/data/services/customer_service.dart';
 
 import '../../core/theme/app_colors.dart';
 import 'add_customer_screen.dart';
 import 'customer_detail_screen.dart';
 
-/// Model sementara. Pindahkan ke data/models saat API-nya siap.
-class CustomerStore {
-  const CustomerStore({
-    required this.storeName,
-    required this.ownerName,
-    required this.phone,
-    required this.address,
-    this.photoUrl,
-  });
-
-  final String storeName;
-  final String ownerName;
-  final String phone;
-  final String address;
-  final String? photoUrl;
-}
+// Supaya file lain yang mengimpor layar ini tetap menemukan CustomerStore.
+export 'package:sfa_mobile/data/models/customer_store.dart';
 
 class CustomerListScreen extends StatefulWidget {
   const CustomerListScreen({super.key});
@@ -31,28 +19,56 @@ class CustomerListScreen extends StatefulWidget {
 class _CustomerListScreenState extends State<CustomerListScreen> {
   static const _background = Color(0xFF3A3A3A);
 
-  // Data dummy, ganti dengan data dari service.
-  final List<CustomerStore> _stores = List.generate(
-    11,
-    (_) => const CustomerStore(
-      storeName: 'TOKO PURNAMA ABADI SENTOSA',
-      ownerName: 'BAMBANG SUTRISNO',
-      phone: '(085876543210)',
-      address: 'JL. JEND. SOEDIRMAN, KABUPATEN KLATEN',
-    ),
-  );
-
+  final _service = CustomerService();
+  List<CustomerStore> _stores = const [];
+  bool _loading = true;
+  bool _failed = false;
   bool _searching = false;
   String _query = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final data = await _service.fetchAll();
+      if (!mounted) return;
+      setState(() {
+        _stores = data;
+        _loading = false;
+        _failed = false;
+      });
+    } catch (e) {
+      debugPrint('LOAD CUSTOMERS ERROR: $e');
+      if (!mounted) return;
+      setState(() {
+        _failed = true;
+        _loading = false;
+      });
+    }
+  }
+
+  void _retry() {
+    setState(() {
+      _loading = true;
+      _failed = false;
+    });
+    _load();
+  }
 
   List<CustomerStore> get _filtered {
     if (_query.isEmpty) return _stores;
     final q = _query.toLowerCase();
     return _stores
-        .where((s) =>
-            s.storeName.toLowerCase().contains(q) ||
-            s.ownerName.toLowerCase().contains(q) ||
-            s.address.toLowerCase().contains(q))
+        .where(
+          (s) =>
+              s.storeName.toLowerCase().contains(q) ||
+              s.ownerName.toLowerCase().contains(q) ||
+              s.address.toLowerCase().contains(q),
+        )
         .toList();
   }
 
@@ -63,11 +79,11 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
     });
   }
 
-  void _onAddStore() {
-    Navigator.of(context).push<bool>(
-      MaterialPageRoute(builder: (_) => const AddCustomerScreen()),
-    );
-    // TODO: kalau hasilnya true, refresh daftar customer dari API.
+  Future<void> _onAddStore() async {
+    final added = await Navigator.of(
+      context,
+    ).push<bool>(MaterialPageRoute(builder: (_) => const AddCustomerScreen()));
+    if (added == true) _load(); // ambil ulang dari server
   }
 
   @override
@@ -93,27 +109,61 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
                   borderRadius: BorderRadius.circular(20),
                 ),
                 clipBehavior: Clip.antiAlias,
-                child: stores.isEmpty
-                    ? const Center(child: Text('Toko tidak ditemukan'))
-                    : ListView.separated(
-                        padding: const EdgeInsets.symmetric(vertical: 4),
-                        itemCount: stores.length,
-                        separatorBuilder: (_, __) => const Divider(
-                          height: 1,
-                          thickness: 1,
-                          indent: 12,
-                          endIndent: 12,
-                          color: Color(0xFFE6E6E6),
-                        ),
-                        itemBuilder: (_, i) => _StoreTile(store: stores[i]),
-                      ),
+                child: _buildBody(stores),
               ),
             ),
-            _BottomBar(count: stores.length, onAddStore: _onAddStore),
+            _BottomBar(count: _stores.length, onAddStore: _onAddStore),
             // Ruang agar tidak tertutup FloatingNavBar (tinggi 64 + margin).
             const SizedBox(height: 96),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildBody(List<CustomerStore> stores) {
+    if (_loading) {
+      return const Center(
+        child: CircularProgressIndicator(color: AppColors.red),
+      );
+    }
+    if (_failed) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Gagal memuat data customer'),
+            const SizedBox(height: 12),
+            FilledButton(
+              onPressed: _retry,
+              style: FilledButton.styleFrom(backgroundColor: AppColors.red),
+              child: const Text('Coba lagi'),
+            ),
+          ],
+        ),
+      );
+    }
+    if (stores.isEmpty) {
+      return Center(
+        child: Text(
+          _stores.isEmpty ? 'Belum ada customer' : 'Toko tidak ditemukan',
+        ),
+      );
+    }
+    return RefreshIndicator(
+      color: AppColors.red,
+      onRefresh: _load,
+      child: ListView.separated(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        itemCount: stores.length,
+        separatorBuilder: (_, _) => const Divider(
+          height: 1,
+          thickness: 1,
+          indent: 12,
+          endIndent: 12,
+          color: Color(0xFFE6E6E6),
+        ),
+        itemBuilder: (_, i) => _StoreTile(store: stores[i]),
       ),
     );
   }
@@ -194,12 +244,11 @@ class _StoreTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final photo = store.photoUrl;
     return InkWell(
       onTap: () {
         Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => CustomerDetailScreen(store: store),
-          ),
+          MaterialPageRoute(builder: (_) => CustomerDetailScreen(store: store)),
         );
       },
       child: Padding(
@@ -213,9 +262,21 @@ class _StoreTile extends StatelessWidget {
                 width: 44,
                 height: 44,
                 color: const Color(0xFFA8A8A8),
-                child: store.photoUrl == null
-                    ? null
-                    : Image.network(store.photoUrl!, fit: BoxFit.cover),
+                child: (photo == null || photo.isEmpty)
+                    ? const Icon(
+                        Icons.storefront_outlined,
+                        color: AppColors.white,
+                        size: 22,
+                      )
+                    : Image.network(
+                        photo,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, _, _) => const Icon(
+                          Icons.storefront_outlined,
+                          color: AppColors.white,
+                          size: 22,
+                        ),
+                      ),
               ),
             ),
             const SizedBox(width: 10),
@@ -238,13 +299,14 @@ class _StoreTile extends StatelessWidget {
                     children: [
                       Expanded(
                         child: Text(
-                          store.ownerName,
+                          store.ownerName.isEmpty ? '-' : store.ownerName,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: _detailStyle,
                         ),
                       ),
-                      Text(store.phone, style: _detailStyle),
+                      if (store.phone.isNotEmpty)
+                        Text(store.phone, style: _detailStyle),
                     ],
                   ),
                   const SizedBox(height: 2),
@@ -321,8 +383,7 @@ class _BottomBar extends StatelessWidget {
                       ),
                     ),
                     SizedBox(width: 6),
-                    Icon(Icons.add_circle,
-                        color: AppColors.white, size: 14),
+                    Icon(Icons.add_circle, color: AppColors.white, size: 14),
                   ],
                 ),
               ),

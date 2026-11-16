@@ -1,18 +1,14 @@
-import 'dart:io';
+import 'dart:typed_data';
 
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:sfa_mobile/data/models/sales.dart';
+import 'package:sfa_mobile/data/services/customer_service.dart';
+import 'package:sfa_mobile/data/services/sales_service.dart';
 
 import '../../core/theme/app_colors.dart';
-
-/// Opsi sales untuk dropdown. Data dummy, ganti dengan hasil API
-/// (users dengan role = 'sales' dan is_active = true).
-class SalesOption {
-  const SalesOption({required this.id, required this.name});
-  final int id;
-  final String name;
-}
 
 class AddCustomerScreen extends StatefulWidget {
   const AddCustomerScreen({super.key});
@@ -25,7 +21,6 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
   static const _background = Color(0xFF3A3A3A);
 
   final _formKey = GlobalKey<FormState>();
-  final _codeCtrl = TextEditingController();
   final _nameCtrl = TextEditingController();
   final _ownerCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController();
@@ -33,20 +28,22 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
   final _notesCtrl = TextEditingController();
   final _picker = ImagePicker();
 
-  // TODO: ambil dari API.
-  final List<SalesOption> _salesOptions = const [
-    SalesOption(id: 1, name: 'Sales A'),
-    SalesOption(id: 2, name: 'Sales B'),
-    SalesOption(id: 3, name: 'Sales C'),
-  ];
+  List<Sales> _salesOptions = const [];
+  bool _salesLoading = true;
+  bool _salesFailed = false;
 
   int? _salesId;
-  File? _photo;
+  Uint8List? _photo;
   bool _saving = false;
 
   @override
+  void initState() {
+    super.initState();
+    _loadSales();
+  }
+
+  @override
   void dispose() {
-    _codeCtrl.dispose();
     _nameCtrl.dispose();
     _ownerCtrl.dispose();
     _phoneCtrl.dispose();
@@ -55,13 +52,42 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
     super.dispose();
   }
 
+  Future<void> _loadSales() async {
+    setState(() {
+      _salesLoading = true;
+      _salesFailed = false;
+    });
+    try {
+      final data = await SalesService().fetchAll();
+      if (!mounted) return;
+      setState(() {
+        _salesOptions = data;
+        _salesLoading = false;
+      });
+    } catch (e) {
+      debugPrint('LOAD SALES (form) ERROR: $e');
+      if (!mounted) return;
+      setState(() {
+        _salesFailed = true;
+        _salesLoading = false;
+      });
+    }
+  }
+
   Future<void> _pickPhoto(ImageSource source) async {
-    final picked = await _picker.pickImage(
-      source: source,
-      maxWidth: 1280,
-      imageQuality: 80,
-    );
-    if (picked != null) setState(() => _photo = File(picked.path));
+    try {
+      final picked = await _picker.pickImage(
+        source: source,
+        maxWidth: 1280,
+        imageQuality: 80,
+      );
+      if (picked == null) return;
+      final bytes = await picked.readAsBytes();
+      if (!mounted) return;
+      setState(() => _photo = bytes);
+    } catch (_) {
+      _showMessage('Tidak bisa membuka kamera/galeri');
+    }
   }
 
   void _showPhotoOptions() {
@@ -101,30 +127,35 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
     );
   }
 
+  void _showMessage(String text) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
+  }
+
   Future<void> _submit() async {
+    if (_saving) return;
     if (!_formKey.currentState!.validate()) return;
 
-    // Nama key sama dengan kolom tabel customers.
-    final fields = <String, String>{
-      'assigned_sales_id': '$_salesId',
-      'code': _codeCtrl.text.trim(),
-      'name': _nameCtrl.text.trim(),
-      'owner_name': _ownerCtrl.text.trim(),
-      'phone': _phoneCtrl.text.trim(),
-      'address': _addressCtrl.text.trim(),
-      'notes': _notesCtrl.text.trim(),
-    }..removeWhere((k, v) => v.isEmpty);
-
     setState(() => _saving = true);
-
-    // TODO: kirim `fields` + file `_photo` (multipart, field 'photo')
-    // ke POST /customers lewat service. Tampilkan error validasi server
-    // (mis. code sudah dipakai) di field terkait.
-    debugPrint('Add customer: $fields, photo: ${_photo?.path}');
-
-    if (!mounted) return;
-    setState(() => _saving = false);
-    Navigator.of(context).pop(true);
+    try {
+      await CustomerService().create(
+        salesId: _salesId!,
+        name: _nameCtrl.text.trim(),
+        ownerName: _ownerCtrl.text.trim(),
+        phone: _phoneCtrl.text.trim(),
+        address: _addressCtrl.text.trim(),
+        notes: _notesCtrl.text.trim(),
+        photoBytes: _photo,
+      );
+      if (!mounted) return;
+      Navigator.of(context).pop(true); // true = daftar perlu di-refresh
+    } on DioException catch (e) {
+      _showMessage(CustomerService.errorMessage(e));
+    } catch (_) {
+      _showMessage('Terjadi kesalahan, coba lagi');
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
   }
 
   @override
@@ -177,13 +208,6 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
                         ),
                       ),
                       const SizedBox(height: 20),
-                      _field(
-                        controller: _codeCtrl,
-                        label: 'Kode Customer',
-                        required: true,
-                        maxLength: 20,
-                        textCapitalization: TextCapitalization.characters,
-                      ),
                       _field(
                         controller: _nameCtrl,
                         label: 'Nama Toko',
@@ -328,20 +352,40 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
   }
 
   Widget _salesDropdown() {
+    final hint = _salesLoading
+        ? 'Memuat sales...'
+        : _salesFailed
+        ? 'Gagal memuat sales'
+        : 'Belum ada sales';
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
-      child: DropdownButtonFormField<int>(
-        isExpanded: true,
-        style: const TextStyle(color: Colors.black87),
-        dropdownColor: AppColors.white,
-        iconEnabledColor: Colors.black54,
-        decoration: _decoration('Sales yang Menangani', required: true),
-        items: [
-          for (final s in _salesOptions)
-            DropdownMenuItem(value: s.id, child: Text(s.name)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          DropdownButtonFormField<int>(
+            isExpanded: true,
+            style: const TextStyle(color: Colors.black87),
+            dropdownColor: AppColors.white,
+            iconEnabledColor: Colors.black54,
+            decoration: _decoration('Sales yang Menangani', required: true),
+            hint: Text(hint),
+            items: [
+              for (final s in _salesOptions)
+                DropdownMenuItem(value: s.id, child: Text(s.nama)),
+            ],
+            onChanged: _salesOptions.isEmpty
+                ? null
+                : (v) => setState(() => _salesId = v),
+            validator: (v) =>
+                v == null ? 'Pilih sales untuk customer ini' : null,
+          ),
+          if (_salesFailed)
+            TextButton(
+              onPressed: _loadSales,
+              child: const Text('Coba muat ulang daftar sales'),
+            ),
         ],
-        onChanged: (v) => setState(() => _salesId = v),
-        validator: (v) => v == null ? 'Pilih sales untuk customer ini' : null,
       ),
     );
   }
@@ -350,7 +394,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
 class _PhotoPicker extends StatelessWidget {
   const _PhotoPicker({required this.photo, required this.onTap});
 
-  final File? photo;
+  final Uint8List? photo;
   final VoidCallback onTap;
 
   @override
@@ -371,7 +415,7 @@ class _PhotoPicker extends StatelessWidget {
                       size: 40,
                       color: AppColors.white,
                     )
-                  : Image.file(photo!, fit: BoxFit.cover),
+                  : Image.memory(photo!, fit: BoxFit.cover),
             ),
           ),
           Positioned(
