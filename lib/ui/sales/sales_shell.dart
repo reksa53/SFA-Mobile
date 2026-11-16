@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:sfa_mobile/ui/sales/order/views/sales_order_list_screen.dart';
 
 import '../core/widgets/account_page.dart';
 import '../core/widgets/floating_navbar.dart';
@@ -16,7 +17,7 @@ class SalesShell extends StatelessWidget {
 
   static const _pages = [
     PlaceholderPage(title: 'Visit'),
-    PlaceholderPage(title: 'Order'),
+    SalesOrderListScreen(),
     AccountPage(),
   ];
 

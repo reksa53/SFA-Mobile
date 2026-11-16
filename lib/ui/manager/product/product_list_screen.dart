@@ -265,7 +265,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
                                     physics: const ClampingScrollPhysics(),
                                     padding: const EdgeInsets.symmetric(vertical: 4),
                                     itemCount: shown.length,
-                                    separatorBuilder: (_, __) =>
+                                    separatorBuilder: (_, _) =>
                                         const Divider(height: 1, indent: 14, endIndent: 14),
                                     itemBuilder: (_, i) => _Row(
                                       product: shown[i],

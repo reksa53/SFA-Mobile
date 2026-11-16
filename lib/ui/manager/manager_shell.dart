@@ -19,6 +19,7 @@ class ManagerShell extends StatelessWidget {
     NavItem(label: 'Akun', icon: Icons.person_outline),
   ];
 
+  // Ganti PlaceholderPage dengan layar sungguhan saat fiturnya jadi.
   static const _pages = [
     CustomerListScreen(),
     ProductListScreen(),

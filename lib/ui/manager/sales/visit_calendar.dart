@@ -1,91 +1,112 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../../data/models/visit.dart';
+import '../../../utils/date_id.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/manager_colors.dart';
-import '../../../utils/date_id.dart';
+import 'visit_card.dart';
 
-/// Kalender bulanan (minggu mulai Minggu, tanpa nama hari — sesuai Figma).
-/// Hari di luar bulan ditampilkan sama seperti desain; kalau diketuk, kalender
-/// pindah ke bulan tersebut.
+const _hari = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+/// Kalender bulanan (minggu mulai Minggu). Hari ini diberi lingkaran putih,
+/// hari terpilih lingkaran merah, dan titik di bawah angka menunjukkan status
+/// kunjungan pada hari itu.
 class VisitCalendar extends StatelessWidget {
   const VisitCalendar({
     super.key,
     required this.month,
     required this.selected,
-    required this.markedDays,
+    required this.statusPerHari,
     required this.onPrevMonth,
     required this.onNextMonth,
     required this.onSelect,
   });
 
-  final DateTime month; // tanggal 1 pada bulan yang ditampilkan
+  /// Tanggal 1 bulan yang ditampilkan.
+  final DateTime month;
   final DateTime? selected;
-  final Set<DateTime> markedDays; // hari yang punya kunjungan (dateOnly)
+
+  /// Kunci = tanggal (tanpa jam), isi = status kunjungan di hari itu.
+  final Map<DateTime, Set<VisitTampilan>> statusPerHari;
   final VoidCallback onPrevMonth;
   final VoidCallback onNextMonth;
   final ValueChanged<DateTime> onSelect;
 
   @override
   Widget build(BuildContext context) {
-    final first = DateTime(month.year, month.month, 1);
-    final leading = first.weekday % 7; // Minggu = 0
-    final daysInMonth = DateTime(month.year, month.month + 1, 0).day;
-    final rows = ((leading + daysInMonth) / 7).ceil();
-    final yearSuffix =
-        month.year == DateTime.now().year ? '' : ' ${month.year}';
+    final hariIni = dateOnly(DateTime.now());
+    final awal = DateTime(month.year, month.month, 1);
+    final offset = awal.weekday % 7; // Minggu = 0
+    final jumlahHari = DateTime(month.year, month.month + 1, 0).day;
+    final baris = ((offset + jumlahHari) / 7).ceil();
+
+    DateTime tanggalKe(int i) =>
+        DateTime(month.year, month.month, 1 - offset + i);
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(8, 8, 8, 12),
+      padding: const EdgeInsets.fromLTRB(10, 12, 10, 8),
       decoration: BoxDecoration(
         color: ManagerColors.calendar,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white10),
       ),
       child: Column(
-        mainAxisSize: MainAxisSize.min,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              IconButton(
-                tooltip: 'Bulan sebelumnya',
-                onPressed: onPrevMonth,
-                icon: const Icon(Icons.chevron_left,
-                    size: 30, color: AppColors.white),
-              ),
-              SizedBox(
-                width: 160,
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(
-                    '${namaBulan(month.month).toUpperCase()}$yearSuffix',
-                    style: GoogleFonts.poppins(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.white,
+          Padding(
+            padding: const EdgeInsets.fromLTRB(4, 0, 4, 6),
+            child: Row(
+              children: [
+                _NavBulan(icon: Icons.chevron_left, onTap: onPrevMonth),
+                Expanded(
+                  child: Center(
+                    child: Text(
+                      '${namaBulan(month.month)} ${month.year}',
+                      style: GoogleFonts.poppins(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.white,
+                      ),
                     ),
                   ),
                 ),
-              ),
-              IconButton(
-                tooltip: 'Bulan berikutnya',
-                onPressed: onNextMonth,
-                icon: const Icon(Icons.chevron_right,
-                    size: 30, color: AppColors.white),
-              ),
+                _NavBulan(icon: Icons.chevron_right, onTap: onNextMonth),
+              ],
+            ),
+          ),
+          Row(
+            children: [
+              for (final h in _hari)
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 4, bottom: 6),
+                    child: Center(
+                      child: Text(
+                        h,
+                        style: GoogleFonts.poppins(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.white70,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
             ],
           ),
-          const SizedBox(height: 4),
-          for (var r = 0; r < rows; r++)
+          for (var r = 0; r < baris; r++)
             Row(
               children: [
                 for (var c = 0; c < 7; c++)
                   Expanded(
-                    child: _DayCell(
-                      date: _dateAt(leading, r, c),
-                      selected: selected != null &&
-                          isSameDay(selected!, _dateAt(leading, r, c)),
-                      marked: markedDays.contains(_dateAt(leading, r, c)),
+                    child: _Hari(
+                      tanggal: tanggalKe(r * 7 + c),
+                      bulanIni: month.month,
+                      hariIni: hariIni,
+                      dipilih: selected != null &&
+                          isSameDay(selected!, tanggalKe(r * 7 + c)),
+                      status:
+                          statusPerHari[tanggalKe(r * 7 + c)] ?? const {},
                       onTap: onSelect,
                     ),
                   ),
@@ -95,66 +116,99 @@ class VisitCalendar extends StatelessWidget {
       ),
     );
   }
-
-  DateTime _dateAt(int leading, int r, int c) =>
-      DateTime(month.year, month.month, 1 - leading + r * 7 + c);
 }
 
-class _DayCell extends StatelessWidget {
-  const _DayCell({
-    required this.date,
-    required this.selected,
-    required this.marked,
+class _NavBulan extends StatelessWidget {
+  const _NavBulan({required this.icon, required this.onTap});
+
+  final IconData icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: const Color(0x1AFFFFFF),
+      borderRadius: BorderRadius.circular(10),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(10),
+        onTap: onTap,
+        child: SizedBox(
+          width: 34,
+          height: 34,
+          child: Icon(icon, size: 22, color: AppColors.white),
+        ),
+      ),
+    );
+  }
+}
+
+class _Hari extends StatelessWidget {
+  const _Hari({
+    required this.tanggal,
+    required this.bulanIni,
+    required this.hariIni,
+    required this.dipilih,
+    required this.status,
     required this.onTap,
   });
 
-  final DateTime date;
-  final bool selected;
-  final bool marked;
+  final DateTime tanggal;
+  final int bulanIni;
+  final DateTime hariIni;
+  final bool dipilih;
+  final Set<VisitTampilan> status;
   final ValueChanged<DateTime> onTap;
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 54,
-      child: InkWell(
-        customBorder: const CircleBorder(),
-        onTap: () => onTap(date),
-        child: Center(
-          child: Container(
-            width: 42,
-            height: 42,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: selected ? AppColors.red : Colors.transparent,
-            ),
-            child: Stack(
+    final luar = tanggal.month != bulanIni;
+    final adalahHariIni = isSameDay(tanggal, hariIni);
+    // Urutan titik tetap sesuai urutan enum (maksimal 3).
+    final titik = VisitTampilan.values.where(status.contains).take(3);
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: () => onTap(tanggal),
+      child: SizedBox(
+        height: 46,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 30,
+              height: 30,
               alignment: Alignment.center,
-              children: [
-                Text(
-                  '${date.day}',
-                  style: GoogleFonts.poppins(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.white,
-                  ),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: dipilih ? AppColors.red : null,
+                border: (adalahHariIni && !dipilih)
+                    ? Border.all(color: AppColors.white, width: 1.5)
+                    : null,
+              ),
+              child: Text(
+                '${tanggal.day}',
+                style: GoogleFonts.poppins(
+                  fontSize: 14,
+                  fontWeight: luar ? FontWeight.w500 : FontWeight.w600,
+                  color: luar ? Colors.white38 : AppColors.white,
                 ),
-                if (marked)
-                  Positioned(
-                    bottom: 3,
-                    child: Container(
-                      width: 5,
-                      height: 5,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: selected ? AppColors.white : AppColors.red,
-                      ),
-                    ),
-                  ),
-              ],
+              ),
             ),
-          ),
+            const SizedBox(height: 2),
+            SizedBox(
+              height: 7,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  for (final s in titik)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 1),
+                      child: StatusDot(status: s, size: 5),
+                    ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );

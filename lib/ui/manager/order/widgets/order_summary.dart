@@ -25,16 +25,16 @@ class OrderSummary extends StatelessWidget {
         children: [
           Column(
             children: [
-              _Stat(label: 'All Order', value: all),
+              OrderStat(label: 'All Order', value: all),
               const SizedBox(height: 8),
-              _Stat(label: 'Pending', value: pending),
+              OrderStat(label: 'Pending', value: pending),
             ],
           ),
           Column(
             children: [
-              _Stat(label: 'Accepted', value: accepted),
+              OrderStat(label: 'Accepted', value: accepted),
               const SizedBox(height: 8),
-              _Stat(label: 'Rejected', value: rejected),
+              OrderStat(label: 'Rejected', value: rejected),
             ],
           ),
         ],
@@ -43,8 +43,8 @@ class OrderSummary extends StatelessWidget {
   }
 }
 
-class _Stat extends StatelessWidget {
-  const _Stat({required this.label, required this.value});
+class OrderStat extends StatelessWidget {
+  const OrderStat({required this.label, required this.value});
 
   final String label;
   final int value;

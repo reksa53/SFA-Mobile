@@ -14,7 +14,7 @@ class ManagerHeader extends StatelessWidget {
     required this.searchController,
     required this.onSearchToggle,
     this.onSearchChanged,
-    this.searchHint = 'Cari...',
+    this.searchHint = 'Search...',
   });
 
   final String title;
@@ -68,7 +68,7 @@ class ManagerHeader extends StatelessWidget {
             ),
             const SizedBox(width: 12),
             Tooltip(
-              message: searchOpen ? 'Tutup pencarian' : 'Cari',
+              message: searchOpen ? 'Close search' : 'Search',
               child: Material(
                 color: AppColors.white,
                 borderRadius: BorderRadius.circular(12),

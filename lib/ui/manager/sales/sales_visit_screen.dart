@@ -1,20 +1,33 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:sfa_mobile/data/services/sales_service.dart';
-import 'package:dio/dio.dart';
 
 import '../../../data/models/sales.dart';
+import '../../../data/models/visit.dart';
 import '../../../data/repositories/sales_visit_repository.dart';
+import '../../../utils/date_id.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/manager_header.dart';
 import 'add_sales_screen.dart';
+import 'sales_avatar.dart';
 import 'visit_screen.dart';
 
-/// Tab "Sales & Visit" milik Manager: daftar sales.
-/// Ketuk satu sales -> VisitScreen (kalender + daftar kunjungan).
+/// Ringkasan kunjungan satu sales pada bulan berjalan.
+class _Ringkasan {
+  const _Ringkasan({required this.total, required this.selesai});
+
+  final int total;
+  final int selesai;
+
+  double get persen => total == 0 ? 0 : selesai / total;
+}
+
+/// Tab "Sales & Visit" milik Manager: daftar sales beserta progres kunjungan
+/// bulan ini. Ketuk satu sales -> VisitScreen.
 ///
-/// Daftar sales diambil dari API (GET /sales). Repository masih dipakai
-/// untuk data kunjungan di VisitScreen.
+/// Daftar sales diambil dari API (GET /sales). Data kunjungan masih lewat
+/// repository.
 class SalesVisitScreen extends StatefulWidget {
   const SalesVisitScreen({
     super.key,
@@ -30,6 +43,7 @@ class SalesVisitScreen extends StatefulWidget {
 class _SalesVisitScreenState extends State<SalesVisitScreen> {
   final _salesService = SalesService();
   List<Sales> _sales = const [];
+  final Map<int, _Ringkasan> _ringkasan = {};
   bool _loading = true;
   bool _failed = false;
   bool _searching = false;
@@ -47,12 +61,40 @@ class _SalesVisitScreenState extends State<SalesVisitScreen> {
     super.dispose();
   }
 
+  _Ringkasan _hitung(List<Visit> visits) {
+    final now = DateTime.now();
+    final bulan = visits
+        .where(
+          (v) => v.tanggal.year == now.year && v.tanggal.month == now.month,
+        )
+        .toList();
+    final selesai = bulan.where((v) => v.status == VisitStatus.visited).length;
+    return _Ringkasan(total: bulan.length, selesai: selesai);
+  }
+
+  /// Kunjungan satu sales. Kalau gagal, anggap kosong supaya daftar sales
+  /// tetap tampil (kunjungan belum terhubung ke API).
+  Future<List<Visit>> _visitsOf(int salesId) async {
+    try {
+      return await widget.repository.getVisits(salesId);
+    } catch (_) {
+      return const <Visit>[];
+    }
+  }
+
   Future<void> _load() async {
     try {
       final data = await _salesService.fetchAll();
+      final hasil = await Future.wait(data.map((s) => _visitsOf(s.id)));
       if (!mounted) return;
       setState(() {
         _sales = data;
+        _ringkasan
+          ..clear()
+          ..addEntries([
+            for (var i = 0; i < data.length; i++)
+              MapEntry(data[i].id, _hitung(hasil[i])),
+          ]);
         _loading = false;
         _failed = false;
       });
@@ -93,25 +135,32 @@ class _SalesVisitScreenState extends State<SalesVisitScreen> {
   void _open(Sales sales) {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) =>
-            VisitScreen(sales: sales, repository: widget.repository),
+        builder: (_) => VisitScreen(
+          sales: sales,
+          repository: widget.repository,
+          onVisitsChanged: (visits) =>
+              setState(() => _ringkasan[sales.id] = _hitung(visits)),
+        ),
       ),
     );
   }
 
   Future<void> _addSales() async {
-    final baru = await Navigator.of(context)
-        .push<Sales>(MaterialPageRoute(builder: (_) => const AddSalesScreen()));
+    final baru = await Navigator.of(context).push<Sales>(
+      MaterialPageRoute(builder: (_) => const AddSalesScreen()),
+    );
     if (baru == null || !mounted) return;
     // Ambil ulang dari server supaya daftar selalu sama dengan database.
     await _load();
     if (!mounted) return;
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text('${baru.nama} ditambahkan')));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('${baru.nama} added')));
   }
 
   @override
   Widget build(BuildContext context) {
+    final now = DateTime.now();
     // SafeArea ikut menyisakan ruang untuk navbar melayang (extendBody di
     // TabShell), jadi footer berhenti tepat di atas navbar.
     return Scaffold(
@@ -125,19 +174,22 @@ class _SalesVisitScreenState extends State<SalesVisitScreen> {
               searchController: _search,
               onSearchToggle: _toggleSearch,
               onSearchChanged: (_) => setState(() {}),
-              searchHint: 'Cari sales...',
+              searchHint: 'Search sales...',
             ),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Material(
-                  color: AppColors.white,
-                  borderRadius: BorderRadius.circular(24),
-                  clipBehavior: Clip.antiAlias,
-                  child: _buildList(),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  '${_sales.length} sales · ${namaBulan(now.month)} ${now.year}',
+                  style: GoogleFonts.poppins(
+                    fontSize: 13,
+                    color: Colors.white70,
+                  ),
                 ),
               ),
             ),
+            Expanded(child: _buildList()),
             Padding(
               padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
               child: Row(
@@ -220,8 +272,8 @@ class _SalesVisitScreenState extends State<SalesVisitScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              'Gagal memuat data sales',
-              style: GoogleFonts.poppins(color: AppColors.black),
+              'Failed to load sales',
+              style: GoogleFonts.poppins(color: AppColors.white),
             ),
             const SizedBox(height: 12),
             FilledButton(
@@ -230,7 +282,7 @@ class _SalesVisitScreenState extends State<SalesVisitScreen> {
                 backgroundColor: AppColors.red,
                 foregroundColor: AppColors.white,
               ),
-              child: const Text('Coba lagi'),
+              child: const Text('Try again'),
             ),
           ],
         ),
@@ -240,73 +292,125 @@ class _SalesVisitScreenState extends State<SalesVisitScreen> {
     if (list.isEmpty) {
       return Center(
         child: Text(
-          _sales.isEmpty ? 'Belum ada sales' : 'Sales tidak ditemukan',
-          style: GoogleFonts.poppins(color: AppColors.black),
+          _sales.isEmpty ? 'No sales yet' : 'No sales found',
+          style: GoogleFonts.poppins(color: AppColors.white),
         ),
       );
     }
-    return RefreshIndicator(
-      color: AppColors.red,
-      onRefresh: _load,
-      child: ListView.builder(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        itemCount: list.length,
-        itemBuilder: (_, i) =>
-            _SalesRow(sales: list[i], onTap: () => _open(list[i])),
+    // Daftar berada di satu kotak putih, sama seperti tab Customer, Product,
+    // dan Order.
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+      child: Material(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(24),
+        clipBehavior: Clip.antiAlias,
+        child: RefreshIndicator(
+          color: AppColors.red,
+          onRefresh: _load,
+          child: ListView.separated(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            itemCount: list.length,
+            separatorBuilder: (_, _) => const Divider(
+              height: 1,
+              thickness: 1,
+              color: Color(0xFFECECEC),
+            ),
+            itemBuilder: (_, i) => _SalesRow(
+              sales: list[i],
+              ringkasan:
+                  _ringkasan[list[i].id] ??
+                  const _Ringkasan(total: 0, selesai: 0),
+              onTap: () => _open(list[i]),
+            ),
+          ),
+        ),
       ),
     );
   }
 }
 
+/// Satu baris sales di dalam kotak putih.
 class _SalesRow extends StatelessWidget {
-  const _SalesRow({required this.sales, required this.onTap});
+  const _SalesRow({
+    required this.sales,
+    required this.ringkasan,
+    required this.onTap,
+  });
 
   final Sales sales;
+  final _Ringkasan ringkasan;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final foto = sales.fotoUrl;
-    final bytes = sales.fotoBytes;
-    final ImageProvider? gambar = bytes != null
-        ? MemoryImage(bytes)
-        : (foto != null && foto.isNotEmpty ? NetworkImage(foto) : null);
+    final kosong = ringkasan.total == 0;
+    const abu = Color(0xFF777777);
 
     return InkWell(
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
         child: Row(
           children: [
-            CircleAvatar(
-              radius: 20,
-              backgroundColor: AppColors.grey,
-              backgroundImage: gambar,
-              child: gambar != null
-                  ? null
-                  : Text(
-                      sales.inisial,
-                      style: GoogleFonts.poppins(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.black,
-                      ),
-                    ),
-            ),
+            SalesAvatar(sales: sales, size: 48),
             const SizedBox(width: 12),
             Expanded(
-              child: Text(
-                sales.nama,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.poppins(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.black,
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    sales.nama,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.poppins(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.black,
+                    ),
+                  ),
+                  const SizedBox(height: 1),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          kosong
+                              ? 'No visits this month'
+                              : '${ringkasan.total} visits this month',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.poppins(
+                            fontSize: 11.5,
+                            color: abu,
+                          ),
+                        ),
+                      ),
+                      if (!kosong)
+                        Text(
+                          '${ringkasan.selesai}/${ringkasan.total} done',
+                          style: GoogleFonts.poppins(
+                            fontSize: 11.5,
+                            color: abu,
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(3),
+                    child: LinearProgressIndicator(
+                      value: ringkasan.persen,
+                      minHeight: 5,
+                      color: AppColors.red,
+                      backgroundColor: const Color(0xFFE6E6E6),
+                    ),
+                  ),
+                ],
               ),
             ),
-            const Icon(Icons.chevron_right, color: AppColors.black),
+            const SizedBox(width: 4),
+            const Icon(Icons.chevron_right, color: Color(0xFFB5B5B5)),
           ],
         ),
       ),
