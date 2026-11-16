@@ -9,6 +9,12 @@ import '../models/visit.dart';
 abstract class SalesVisitRepository {
   Future<List<Sales>> getSales();
   Future<List<Visit>> getVisits(int salesId);
+
+  /// Kunjungan milik Sales yang sedang login (dipakai layar Sales).
+  Future<List<Visit>> getMyVisits();
+
+  /// Sales melaporkan hasil kunjungan: status visited / notVisited + catatan.
+  Future<Visit> reportVisit(Visit visit, VisitStatus status, String catatan);
 }
 
 /// Data sementara. Dipakai selama endpoint Laravel belum siap. Untuk pindah ke
@@ -32,6 +38,27 @@ class DummySalesVisitRepository implements SalesVisitRepository {
     // Sales yang baru ditambahkan dari layar Add Sales belum punya kunjungan.
     if (!_sales.any((s) => s.id == salesId)) return [];
     return _bangkitkan(salesId);
+  }
+
+  // Sales yang login sementara = Icha Clowy (id 1).
+  static const _meId = 1;
+
+  // Hasil laporan disimpan di sini agar tidak hilang saat pindah tab.
+  static final Map<int, Visit> _laporan = {};
+
+  @override
+  Future<List<Visit>> getMyVisits() async {
+    await Future<void>.delayed(const Duration(milliseconds: 400));
+    return _bangkitkan(_meId).map((v) => _laporan[v.id] ?? v).toList();
+  }
+
+  @override
+  Future<Visit> reportVisit(
+      Visit visit, VisitStatus status, String catatan) async {
+    await Future<void>.delayed(const Duration(milliseconds: 300));
+    final baru = visit.copyWith(status: status, catatan: catatan);
+    _laporan[visit.id] = baru;
+    return baru;
   }
 
   static const _sales = [
@@ -121,5 +148,26 @@ class ApiSalesVisitRepository implements SalesVisitRepository {
     return list
         .map((e) => Visit.fromJson(e as Map<String, dynamic>))
         .toList();
+  }
+
+  /// ASUMSI: GET /api/my-visits  dan  PATCH /api/visits/{id}
+  /// dengan body {status: visited|not_visited, notes: "..."}.
+  @override
+  Future<List<Visit>> getMyVisits() async {
+    final res = await _dio.get('/my-visits');
+    final list = res.data['data'] as List;
+    return list
+        .map((e) => Visit.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  @override
+  Future<Visit> reportVisit(
+      Visit visit, VisitStatus status, String catatan) async {
+    await _dio.patch('/visits/${visit.id}', data: {
+      'status': status == VisitStatus.visited ? 'visited' : 'not_visited',
+      'notes': catatan,
+    });
+    return visit.copyWith(status: status, catatan: catatan);
   }
 }

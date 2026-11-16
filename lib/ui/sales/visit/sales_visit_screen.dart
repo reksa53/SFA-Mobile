@@ -1,0 +1,457 @@
+import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+
+import '../../../data/models/visit.dart';
+import '../../../data/repositories/sales_visit_repository.dart';
+import '../../../utils/date_id.dart';
+import '../../core/theme/app_colors.dart';
+import '../../core/theme/manager_colors.dart';
+import '../../manager/sales/visit_calendar.dart';
+import '../../manager/sales/visit_card.dart' show StatusDot;
+import 'visit_detail_screen.dart';
+import 'visit_status_chip.dart';
+
+/// Tab "Visit" untuk role Sales: ringkasan, kalender, dan daftar kunjungan.
+/// Tidak ada navbar di sini; navbar dipasang oleh TabShell di SalesShell.
+class SalesVisitScreen extends StatefulWidget {
+  const SalesVisitScreen({
+    super.key,
+    this.salesName = 'Icha Clowy',
+    this.repository = const DummySalesVisitRepository(),
+  });
+
+  /// Nama Sales yang login (nanti ambil dari data login).
+  final String salesName;
+  final SalesVisitRepository repository;
+
+  @override
+  State<SalesVisitScreen> createState() => _SalesVisitScreenState();
+}
+
+class _SalesVisitScreenState extends State<SalesVisitScreen> {
+  late DateTime _month;
+  DateTime? _selected;
+  VisitTampilan? _filter;
+  List<Visit> _visits = const [];
+  bool _loading = true;
+  bool _failed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final now = DateTime.now();
+    _month = DateTime(now.year, now.month);
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final data = await widget.repository.getMyVisits();
+      if (!mounted) return;
+      setState(() {
+        _visits = data;
+        _loading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _failed = true;
+        _loading = false;
+      });
+    }
+  }
+
+  void _retry() {
+    setState(() {
+      _loading = true;
+      _failed = false;
+    });
+    _load();
+  }
+
+  void _changeMonth(int delta) => setState(() {
+        _month = DateTime(_month.year, _month.month + delta);
+        _selected = null;
+      });
+
+  void _selectDay(DateTime day) => setState(() {
+        if (_selected != null && isSameDay(_selected!, day)) {
+          _selected = null;
+        } else {
+          _selected = dateOnly(day);
+          _month = DateTime(day.year, day.month);
+        }
+      });
+
+  void _toggleFilter(VisitTampilan s) =>
+      setState(() => _filter = _filter == s ? null : s);
+
+  void _showAll() => setState(() {
+        _selected = null;
+        _filter = null;
+      });
+
+  List<Visit> get _bulanIni => _visits
+      .where((v) =>
+          v.tanggal.year == _month.year && v.tanggal.month == _month.month)
+      .toList();
+
+  List<Visit> get _tampil {
+    var list = _selected != null
+        ? _visits.where((v) => isSameDay(v.tanggal, _selected!)).toList()
+        : _bulanIni;
+    if (_filter != null) {
+      list = list.where((v) => v.tampilan == _filter).toList();
+    }
+    list.sort((a, b) => a.tanggal.compareTo(b.tanggal));
+    return list;
+  }
+
+  Map<DateTime, Set<VisitTampilan>> get _statusPerHari {
+    final peta = <DateTime, Set<VisitTampilan>>{};
+    for (final v in _visits) {
+      peta
+          .putIfAbsent(dateOnly(v.tanggal), () => <VisitTampilan>{})
+          .add(v.tampilan);
+    }
+    return peta;
+  }
+
+  Future<void> _open(Visit v) async {
+    final hasil = await Navigator.of(context).push<Visit>(
+      MaterialPageRoute(
+        builder: (_) =>
+            VisitDetailScreen(visit: v, repository: widget.repository),
+      ),
+    );
+    if (hasil == null || !mounted) return;
+    setState(() {
+      _visits = [for (final x in _visits) x.id == hasil.id ? hasil : x];
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(hasil.status == VisitStatus.visited
+            ? 'Visit marked as done'
+            : 'Visit marked as not visited'),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final now = DateTime.now();
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: SafeArea(
+        bottom: false,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
+              child: Text(
+                'Visit',
+                style: GoogleFonts.poppins(
+                  fontSize: 30,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.white,
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
+              child: Text(
+                'Hi, ${widget.salesName} · ${namaBulan(now.month)} ${now.year}',
+                style: GoogleFonts.poppins(
+                  fontSize: 13,
+                  color: Colors.white70,
+                ),
+              ),
+            ),
+            Expanded(child: _buildBody()),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBody() {
+    if (_loading) {
+      return const Center(
+        child: CircularProgressIndicator(color: AppColors.red),
+      );
+    }
+    if (_failed) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Failed to load visits',
+              style: GoogleFonts.poppins(color: AppColors.white),
+            ),
+            const SizedBox(height: 12),
+            FilledButton(
+              onPressed: _retry,
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.red,
+                foregroundColor: AppColors.white,
+              ),
+              child: const Text('Try again'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final bulan = _bulanIni;
+    int hitung(VisitTampilan s) => bulan.where((v) => v.tampilan == s).length;
+    final list = _tampil;
+    final judul = _selected != null
+        ? formatTanggal(_selected!)
+        : 'All visits · ${namaBulan(_month.month)}';
+    final adaFilter = _selected != null || _filter != null;
+
+    return ListView(
+      // padding bawah besar supaya isi tidak tertutup navbar melayang
+      padding: const EdgeInsets.fromLTRB(24, 0, 24, 120),
+      children: [
+        Row(
+          children: [
+            for (final s in VisitTampilan.values) ...[
+              if (s != VisitTampilan.values.first) const SizedBox(width: 8),
+              Expanded(
+                child: _StatTile(
+                  status: s,
+                  jumlah: hitung(s),
+                  dipilih: _filter == s,
+                  onTap: () => _toggleFilter(s),
+                ),
+              ),
+            ],
+          ],
+        ),
+        const SizedBox(height: 14),
+        VisitCalendar(
+          month: _month,
+          selected: _selected,
+          statusPerHari: _statusPerHari,
+          onPrevMonth: () => _changeMonth(-1),
+          onNextMonth: () => _changeMonth(1),
+          onSelect: _selectDay,
+        ),
+        const SizedBox(height: 18),
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                judul,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.poppins(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.white,
+                ),
+              ),
+            ),
+            if (adaFilter)
+              InkWell(
+                borderRadius: BorderRadius.circular(12),
+                onTap: _showAll,
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.glass,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    'Show all',
+                    style: GoogleFonts.poppins(
+                      fontSize: 11.5,
+                      color: AppColors.white,
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        if (list.isEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 28),
+            child: Center(
+              child: Text(
+                'No visits',
+                style: GoogleFonts.poppins(
+                  fontSize: 13,
+                  color: Colors.white70,
+                ),
+              ),
+            ),
+          )
+        else
+          Material(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
+            clipBehavior: Clip.antiAlias,
+            child: ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              itemCount: list.length,
+              separatorBuilder: (_, _) =>
+                  const Divider(height: 1, color: Color(0xFFECECEC)),
+              itemBuilder: (_, i) =>
+                  _VisitRow(visit: list[i], onTap: () => _open(list[i])),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _VisitRow extends StatelessWidget {
+  const _VisitRow({required this.visit, required this.onTap});
+
+  final Visit visit;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+        child: Row(
+          children: [
+            Container(
+              width: 48,
+              height: 54,
+              decoration: BoxDecoration(
+                color: const Color(0xFFF1F1F1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    '${visit.tanggal.day}',
+                    style: GoogleFonts.poppins(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                      height: 1.05,
+                      color: AppColors.black,
+                    ),
+                  ),
+                  Text(
+                    singkatBulan(visit.tanggal.month),
+                    style: GoogleFonts.poppins(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.6,
+                      color: const Color(0xFF777777),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    visit.tokoNama.toUpperCase(),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.poppins(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w700,
+                      height: 1.25,
+                      color: AppColors.black,
+                    ),
+                  ),
+                  Text(
+                    formatTanggal(visit.tanggal),
+                    style: GoogleFonts.poppins(
+                      fontSize: 11.5,
+                      color: const Color(0xFF777777),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            VisitStatusChipLight(status: visit.tampilan),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _StatTile extends StatelessWidget {
+  const _StatTile({
+    required this.status,
+    required this.jumlah,
+    required this.dipilih,
+    required this.onTap,
+  });
+
+  final VisitTampilan status;
+  final int jumlah;
+  final bool dipilih;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final radius = BorderRadius.circular(16);
+    return Material(
+      color: ManagerColors.calendar,
+      shape: RoundedRectangleBorder(
+        borderRadius: radius,
+        side: BorderSide(
+          color: dipilih ? AppColors.red : Colors.white10,
+          width: dipilih ? 1.5 : 1,
+        ),
+      ),
+      child: InkWell(
+        borderRadius: radius,
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          child: Column(
+            children: [
+              Text(
+                '$jumlah',
+                style: GoogleFonts.poppins(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w700,
+                  height: 1.1,
+                  color: AppColors.white,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  StatusDot(status: status),
+                  const SizedBox(width: 6),
+                  Text(
+                    status.singkat,
+                    style: GoogleFonts.poppins(
+                      fontSize: 11,
+                      color: Colors.white70,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}

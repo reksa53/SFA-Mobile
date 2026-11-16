@@ -247,7 +247,7 @@ class _AddSalesScreenState extends State<AddSalesScreen> {
                               mainAxisAlignment: MainAxisAlignment.start,
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
-                                const SizedBox(height: 26),
+                                const SizedBox(height: 10),
                                 Center(
                                   child: _FotoPicker(
                                     id: _id,
@@ -256,7 +256,7 @@ class _AddSalesScreenState extends State<AddSalesScreen> {
                                     onTap: _pilihFoto,
                                   ),
                                 ),
-                                const SizedBox(height: 28),
+                                const SizedBox(height: 20),
                                 _Field(
                                   label: 'Full Name',
                                   controller: _nama,
@@ -383,7 +383,7 @@ class _FotoPicker extends StatelessWidget {
             Positioned.fill(
               child: ValueListenableBuilder<TextEditingValue>(
                 valueListenable: nama,
-                builder: (_, value, __) {
+                builder: (_, value, _) {
                   final kosong = value.text.trim().isEmpty && foto == null;
                   if (kosong) {
                     return Container(

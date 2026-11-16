@@ -10,7 +10,8 @@ import '../../core/theme/manager_colors.dart';
 import 'edit_visit_screen.dart';
 import 'sales_avatar.dart';
 import 'visit_calendar.dart';
-import 'visit_card.dart';
+import '../../sales/visit/visit_status_chip.dart';
+import 'visit_card.dart' show StatusDot;
 
 /// Layar "Visit": ringkasan, kalender, dan daftar kunjungan satu sales.
 class VisitScreen extends StatefulWidget {
@@ -286,12 +287,98 @@ class _VisitScreenState extends State<VisitScreen> {
             ),
           )
         else
-          for (final v in list)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: VisitCard(visit: v),
+          Material(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
+            clipBehavior: Clip.antiAlias,
+            child: ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              itemCount: list.length,
+              separatorBuilder: (_, _) =>
+                  const Divider(height: 1, color: Color(0xFFECECEC)),
+              itemBuilder: (_, i) => _VisitRow(visit: list[i]),
             ),
+          ),
       ],
+    );
+  }
+}
+
+/// Satu baris kunjungan di dalam kotak putih.
+class _VisitRow extends StatelessWidget {
+  const _VisitRow({required this.visit});
+
+  final Visit visit;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      child: Row(
+        children: [
+          Container(
+            width: 48,
+            height: 54,
+            decoration: BoxDecoration(
+              color: const Color(0xFFF1F1F1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  '${visit.tanggal.day}',
+                  style: GoogleFonts.poppins(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    height: 1.05,
+                    color: AppColors.black,
+                  ),
+                ),
+                Text(
+                  singkatBulan(visit.tanggal.month),
+                  style: GoogleFonts.poppins(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.6,
+                    color: const Color(0xFF777777),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  visit.tokoNama.toUpperCase(),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.poppins(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w700,
+                    height: 1.25,
+                    color: AppColors.black,
+                  ),
+                ),
+                Text(
+                  formatTanggal(visit.tanggal),
+                  style: GoogleFonts.poppins(
+                    fontSize: 11.5,
+                    color: const Color(0xFF777777),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          VisitStatusChipLight(status: visit.tampilan),
+        ],
+      ),
     );
   }
 }
