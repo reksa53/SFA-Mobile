@@ -8,6 +8,7 @@ class ApiClient {
   static final ApiClient instance = ApiClient._();
 
   static const _tokenKey = 'token';
+  static const _roleKey = 'role';
   final _storage = const FlutterSecureStorage();
 
   late final Dio dio =
@@ -33,6 +34,7 @@ class ApiClient {
               if (e.response?.statusCode == 401 &&
                   e.requestOptions.path != '/login') {
                 await _storage.delete(key: _tokenKey);
+                await _storage.delete(key: _roleKey);
               }
               handler.next(e);
             },
@@ -42,16 +44,27 @@ class ApiClient {
   Future<bool> hasToken() async =>
       (await _storage.read(key: _tokenKey)) != null;
 
-  Future<void> login(String email, String password) async {
+  Future<String?> getRole() => _storage.read(key: _roleKey);
+
+  /// Login, simpan token dan role, lalu kembalikan role ('manager' / 'sales').
+  Future<String> login(String email, String password) async {
     final res = await dio.post(
       '/login',
       data: {'email': email, 'password': password},
     );
+
     final token = res.data['token'];
     if (token is! String || token.isEmpty) {
       throw Exception('Token tidak ditemukan di response');
     }
+    final role = res.data['data']?['role'];
+    if (role is! String || role.isEmpty) {
+      throw Exception('Role tidak ditemukan di response');
+    }
+
     await _storage.write(key: _tokenKey, value: token);
+    await _storage.write(key: _roleKey, value: role);
+    return role;
   }
 
   Future<void> logout() async {
@@ -59,5 +72,6 @@ class ApiClient {
       await dio.post('/logout');
     } catch (_) {}
     await _storage.delete(key: _tokenKey);
+    await _storage.delete(key: _roleKey);
   }
 }

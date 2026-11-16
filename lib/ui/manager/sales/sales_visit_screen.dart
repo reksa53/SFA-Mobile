@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:sfa_mobile/data/services/sales_service.dart';
+import 'package:dio/dio.dart';
 
 import '../../../data/models/sales.dart';
 import '../../../data/repositories/sales_visit_repository.dart';
@@ -10,6 +12,9 @@ import 'visit_screen.dart';
 
 /// Tab "Sales & Visit" milik Manager: daftar sales.
 /// Ketuk satu sales -> VisitScreen (kalender + daftar kunjungan).
+///
+/// Daftar sales diambil dari API (GET /sales). Repository masih dipakai
+/// untuk data kunjungan di VisitScreen.
 class SalesVisitScreen extends StatefulWidget {
   const SalesVisitScreen({
     super.key,
@@ -23,6 +28,7 @@ class SalesVisitScreen extends StatefulWidget {
 }
 
 class _SalesVisitScreenState extends State<SalesVisitScreen> {
+  final _salesService = SalesService();
   List<Sales> _sales = const [];
   bool _loading = true;
   bool _failed = false;
@@ -43,13 +49,20 @@ class _SalesVisitScreenState extends State<SalesVisitScreen> {
 
   Future<void> _load() async {
     try {
-      final data = await widget.repository.getSales();
+      final data = await _salesService.fetchAll();
       if (!mounted) return;
       setState(() {
         _sales = data;
         _loading = false;
+        _failed = false;
       });
-    } catch (_) {
+    } catch (e) {
+      debugPrint('LOAD SALES ERROR: $e');
+      if (e is DioException) {
+        debugPrint(
+          'status: ${e.response?.statusCode} | body: ${e.response?.data}',
+        );
+      }
       if (!mounted) return;
       setState(() {
         _failed = true;
@@ -67,9 +80,9 @@ class _SalesVisitScreenState extends State<SalesVisitScreen> {
   }
 
   void _toggleSearch() => setState(() {
-        _searching = !_searching;
-        if (!_searching) _search.clear();
-      });
+    _searching = !_searching;
+    if (!_searching) _search.clear();
+  });
 
   List<Sales> get _shown {
     final q = _search.text.trim().toLowerCase();
@@ -87,15 +100,14 @@ class _SalesVisitScreenState extends State<SalesVisitScreen> {
   }
 
   Future<void> _addSales() async {
-    final baru = await Navigator.of(context).push<Sales>(
-      MaterialPageRoute(builder: (_) => const AddSalesScreen()),
-    );
+    final baru = await Navigator.of(context)
+        .push<Sales>(MaterialPageRoute(builder: (_) => const AddSalesScreen()));
     if (baru == null || !mounted) return;
-    // TODO: setelah API register siap, muat ulang daftar dari server.
-    setState(() => _sales = [..._sales, baru]);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('${baru.nama} ditambahkan')),
-    );
+    // Ambil ulang dari server supaya daftar selalu sama dengan database.
+    await _load();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text('${baru.nama} ditambahkan')));
   }
 
   @override
@@ -143,7 +155,9 @@ class _SalesVisitScreenState extends State<SalesVisitScreen> {
                       const SizedBox(width: 6),
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 1),
+                          horizontal: 8,
+                          vertical: 1,
+                        ),
                         decoration: BoxDecoration(
                           color: AppColors.glass,
                           borderRadius: BorderRadius.circular(8),
@@ -226,16 +240,20 @@ class _SalesVisitScreenState extends State<SalesVisitScreen> {
     if (list.isEmpty) {
       return Center(
         child: Text(
-          'Sales tidak ditemukan',
+          _sales.isEmpty ? 'Belum ada sales' : 'Sales tidak ditemukan',
           style: GoogleFonts.poppins(color: AppColors.black),
         ),
       );
     }
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      itemCount: list.length,
-      itemBuilder: (_, i) =>
-          _SalesRow(sales: list[i], onTap: () => _open(list[i])),
+    return RefreshIndicator(
+      color: AppColors.red,
+      onRefresh: _load,
+      child: ListView.builder(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        itemCount: list.length,
+        itemBuilder: (_, i) =>
+            _SalesRow(sales: list[i], onTap: () => _open(list[i])),
+      ),
     );
   }
 }
@@ -249,10 +267,10 @@ class _SalesRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final foto = sales.fotoUrl;
-final bytes = sales.fotoBytes;
-final ImageProvider? gambar = bytes != null
-    ? MemoryImage(bytes)
-    : (foto != null && foto.isNotEmpty ? NetworkImage(foto) : null);
+    final bytes = sales.fotoBytes;
+    final ImageProvider? gambar = bytes != null
+        ? MemoryImage(bytes)
+        : (foto != null && foto.isNotEmpty ? NetworkImage(foto) : null);
 
     return InkWell(
       onTap: onTap,

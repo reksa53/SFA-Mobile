@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:sfa_mobile/data/services/api_client.dart';
 import 'package:sfa_mobile/ui/manager/manager_shell.dart';
+import 'package:sfa_mobile/ui/sales/sales_shell.dart';
 
 import '../../core/theme/app_text_styles.dart';
 import '../../core/widgets/app_text_field.dart';
@@ -44,6 +45,8 @@ class _LoginScreenState extends State<LoginScreen> {
     switch (status) {
       case 401:
         return 'Email atau password salah';
+      case 403:
+        return serverMessage ?? 'Akun tidak punya akses';
       case 422:
         return serverMessage ?? 'Data tidak valid';
       case 429:
@@ -64,12 +67,28 @@ class _LoginScreenState extends State<LoginScreen> {
 
     setState(() => _loading = true);
     try {
-      await ApiClient.instance.login(_email.text.trim(), _password.text);
+      final role = await ApiClient.instance.login(
+        _email.text.trim(),
+        _password.text,
+      );
       if (!mounted) return;
-      // TODO: arahkan sesuai role lewat router kalau sudah ada.
+
+      final Widget? tujuan = switch (role) {
+        'manager' => const ManagerShell(),
+        'sales' => const SalesShell(),
+        _ => null,
+      };
+
+      if (tujuan == null) {
+        // Jangan tinggalkan token untuk role yang tidak dikenali.
+        await ApiClient.instance.logout();
+        if (mounted) setState(() => _error = 'Role akun tidak dikenali');
+        return;
+      }
+
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => const ManagerShell()),
+        MaterialPageRoute(builder: (_) => tujuan),
       );
     } on DioException catch (e) {
       if (mounted) setState(() => _error = _errorMessage(e));
