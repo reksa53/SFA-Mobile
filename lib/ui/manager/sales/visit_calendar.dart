@@ -21,6 +21,7 @@ class VisitCalendar extends StatelessWidget {
     required this.onPrevMonth,
     required this.onNextMonth,
     required this.onSelect,
+    this.cellHeight = 46,
   });
 
   /// Tanggal 1 bulan yang ditampilkan.
@@ -32,6 +33,9 @@ class VisitCalendar extends StatelessWidget {
   final VoidCallback onPrevMonth;
   final VoidCallback onNextMonth;
   final ValueChanged<DateTime> onSelect;
+
+  /// Tinggi satu baris tanggal. Bawaan 46; layar Sales memakai 38 (padat).
+  final double cellHeight;
 
   @override
   Widget build(BuildContext context) {
@@ -108,6 +112,7 @@ class VisitCalendar extends StatelessWidget {
                       status:
                           statusPerHari[tanggalKe(r * 7 + c)] ?? const {},
                       onTap: onSelect,
+                      cellHeight: cellHeight,
                     ),
                   ),
               ],
@@ -150,6 +155,7 @@ class _Hari extends StatelessWidget {
     required this.dipilih,
     required this.status,
     required this.onTap,
+    required this.cellHeight,
   });
 
   final DateTime tanggal;
@@ -158,9 +164,11 @@ class _Hari extends StatelessWidget {
   final bool dipilih;
   final Set<VisitTampilan> status;
   final ValueChanged<DateTime> onTap;
+  final double cellHeight;
 
   @override
   Widget build(BuildContext context) {
+    final lingkar = cellHeight >= 44 ? 30.0 : 28.0;
     final luar = tanggal.month != bulanIni;
     final adalahHariIni = isSameDay(tanggal, hariIni);
     // Urutan titik tetap sesuai urutan enum (maksimal 3).
@@ -170,13 +178,13 @@ class _Hari extends StatelessWidget {
       borderRadius: BorderRadius.circular(12),
       onTap: () => onTap(tanggal),
       child: SizedBox(
-        height: 46,
+        height: cellHeight,
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              width: 30,
-              height: 30,
+              width: lingkar,
+              height: lingkar,
               alignment: Alignment.center,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,

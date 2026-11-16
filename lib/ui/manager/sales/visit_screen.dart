@@ -208,102 +208,131 @@ class _VisitScreenState extends State<VisitScreen> {
         : 'All visits · ${namaBulan(_month.month)}';
     final adaFilter = _selected != null || _filter != null;
 
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
+    // Halaman tetap. Ringkasan, kalender, dan judul tidak bergulir; daftar ada
+    // di kotak putih setinggi maksimal 3 baris. Lebih dari itu bisa digulir di
+    // dalam kotak. Kalau hanya 1-2 kunjungan, kotak pendek dan tidak bergulir.
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            for (final s in VisitTampilan.values) ...[
-              if (s != VisitTampilan.values.first) const SizedBox(width: 8),
-              Expanded(
-                child: _StatTile(
-                  status: s,
-                  jumlah: hitung(s),
-                  dipilih: _filter == s,
-                  onTap: () => _toggleFilter(s),
-                ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  for (final s in VisitTampilan.values) ...[
+                    if (s != VisitTampilan.values.first)
+                      const SizedBox(width: 8),
+                    Expanded(
+                      child: _StatTile(
+                        status: s,
+                        jumlah: hitung(s),
+                        dipilih: _filter == s,
+                        onTap: () => _toggleFilter(s),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+              const SizedBox(height: 10),
+              VisitCalendar(
+                month: _month,
+                selected: _selected,
+                statusPerHari: _statusPerHari,
+                onPrevMonth: () => _changeMonth(-1),
+                onNextMonth: () => _changeMonth(1),
+                onSelect: _selectDay,
+                cellHeight: 38,
               ),
             ],
-          ],
+          ),
         ),
-        const SizedBox(height: 14),
-        VisitCalendar(
-          month: _month,
-          selected: _selected,
-          statusPerHari: _statusPerHari,
-          onPrevMonth: () => _changeMonth(-1),
-          onNextMonth: () => _changeMonth(1),
-          onSelect: _selectDay,
-        ),
-        const SizedBox(height: 18),
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                judul,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.poppins(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.white,
-                ),
-              ),
-            ),
-            if (adaFilter)
-              InkWell(
-                borderRadius: BorderRadius.circular(12),
-                onTap: _tampilkanSemua,
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: AppColors.glass,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(24, 14, 24, 8),
+          child: SizedBox(
+            height: 26, // tetap, dengan atau tanpa tombol Show all
+            child: Row(
+              children: [
+                Expanded(
                   child: Text(
-                    'Show all',
+                    judul,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: GoogleFonts.poppins(
-                      fontSize: 11.5,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
                       color: AppColors.white,
                     ),
                   ),
                 ),
-              ),
-          ],
+                if (adaFilter)
+                  InkWell(
+                    borderRadius: BorderRadius.circular(12),
+                    onTap: _tampilkanSemua,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: AppColors.glass,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        'Show all',
+                        style: GoogleFonts.poppins(
+                          fontSize: 11.5,
+                          color: AppColors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
         ),
-        const SizedBox(height: 10),
-        if (list.isEmpty)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 28),
-            child: Center(
-              child: Text(
-                'No visits',
-                style: GoogleFonts.poppins(
-                  fontSize: 13,
-                  color: Colors.white70,
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+            child: Align(
+              alignment: Alignment.topCenter,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: _tinggiMaks),
+                child: Material(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(24),
+                  clipBehavior: Clip.antiAlias,
+                  child: list.isEmpty
+                      ? SizedBox(
+                          height: 86, // sama dengan kotak berisi satu kunjungan
+                          child: Center(
+                            child: Text(
+                              'No visits',
+                              style: GoogleFonts.poppins(
+                                fontSize: 13,
+                                color: const Color(0xFF777777),
+                              ),
+                            ),
+                          ),
+                        )
+                      : ListView.separated(
+                          shrinkWrap: true,
+                          physics: const ClampingScrollPhysics(),
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          itemCount: list.length,
+                          separatorBuilder: (_, _) => const Divider(
+                              height: 1, color: Color(0xFFECECEC)),
+                          itemBuilder: (_, i) => _VisitRow(visit: list[i]),
+                        ),
                 ),
               ),
             ),
-          )
-        else
-          Material(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(24),
-            clipBehavior: Clip.antiAlias,
-            child: ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              padding: const EdgeInsets.symmetric(vertical: 4),
-              itemCount: list.length,
-              separatorBuilder: (_, _) =>
-                  const Divider(height: 1, color: Color(0xFFECECEC)),
-              itemBuilder: (_, i) => _VisitRow(visit: list[i]),
-            ),
           ),
+        ),
       ],
     );
   }
+
+  /// Tinggi maksimal kotak: 3 baris (tiap baris 78 px) + 2 garis + padding.
+  static const double _tinggiMaks = 4 * 78 + 3 + 8;
 }
 
 /// Satu baris kunjungan di dalam kotak putih.
@@ -486,7 +515,7 @@ class _StatTile extends StatelessWidget {
         borderRadius: radius,
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 10),
+          padding: const EdgeInsets.symmetric(vertical: 8),
           child: Column(
             children: [
               Text(

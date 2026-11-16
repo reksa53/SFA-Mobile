@@ -49,7 +49,37 @@ class DummySalesVisitRepository implements SalesVisitRepository {
   @override
   Future<List<Visit>> getMyVisits() async {
     await Future<void>.delayed(const Duration(milliseconds: 400));
-    return _bangkitkan(_meId).map((v) => _laporan[v.id] ?? v).toList();
+    return _kunjunganSaya().map((v) => _laporan[v.id] ?? v).toList();
+  }
+
+  /// Kunjungan contoh untuk Sales yang login: selalu ada Done, Overdue,
+  /// Pending, dan Not visited di sekitar hari ini (tanggal relatif).
+  static List<Visit> _kunjunganSaya() {
+    final now = DateTime.now();
+    final hariIni = DateTime(now.year, now.month, now.day);
+    Visit v(int id, int geser, String toko, VisitStatus st, [String cat = '']) =>
+        Visit(
+          id: 9000 + id,
+          tokoNama: toko,
+          tanggal: DateTime(hariIni.year, hariIni.month, hariIni.day + geser),
+          status: st,
+          catatan: cat,
+        );
+    return [
+      v(1, -9, 'TOKO AKBAR AMIRUL', VisitStatus.visited,
+          'Stok lengkap, order bulan depan.'),
+      v(2, -7, 'TOKO SINAR JAYA', VisitStatus.visited),
+      v(3, -6, 'TOKO KEMBALI DJAYA', VisitStatus.notVisited,
+          'Toko tutup (libur keluarga).'),
+      v(4, -4, 'TOKO MAKMUR SENTOSA', VisitStatus.visited,
+          'Pemilik minta katalog baru.'),
+      v(5, -2, 'TOKO BERKAH ABADI', VisitStatus.scheduled),
+      v(6, 0, 'TOKO PURNAMA ABADI SENTOSA', VisitStatus.scheduled),
+      v(7, 0, 'TOKO SINAR JAYA', VisitStatus.scheduled),
+      v(8, 2, 'TOKO AKBAR AMIRUL', VisitStatus.scheduled),
+      v(9, 5, 'TOKO BERKAH ABADI', VisitStatus.scheduled),
+      v(10, 8, 'TOKO MAKMUR SENTOSA', VisitStatus.scheduled),
+    ];
   }
 
   @override

@@ -183,35 +183,44 @@ class _EditVisitScreenState extends State<EditVisitScreen> {
               ),
             ),
             Expanded(
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
-                children: [
-                  _SalesInfo(sales: widget.sales, jumlah: _visits.length),
-                  const SizedBox(height: 12),
-                  for (final v in _visits)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 9),
-                      child: _EditVisitCard(
-                        visit: v,
-                        onEdit: () => _bukaForm(v),
-                        onDelete: () => _hapus(v),
-                      ),
-                    ),
-                  if (_visits.isEmpty)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 24),
-                      child: Center(
-                        child: Text(
-                          'No visits yet',
-                          style: GoogleFonts.poppins(
-                            fontSize: 14,
-                            color: Colors.white70,
+              // Kotak daftar: sisi kiri-kanan sejajar dengan kartu, sudut atas
+              // dan bawah melengkung, jadi kartu yang terpotong di tepi tidak
+              // terlihat dipotong lurus.
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(20),
+                  child: ListView(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    children: [
+                      _SalesInfo(sales: widget.sales, jumlah: _visits.length),
+                      const SizedBox(height: 12),
+                      for (final v in _visits)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 9),
+                          child: _EditVisitCard(
+                            visit: v,
+                            onEdit: () => _bukaForm(v),
+                            onDelete: () => _hapus(v),
                           ),
                         ),
-                      ),
-                    ),
-                  _TambahButton(onTap: () => _bukaForm()),
-                ],
+                      if (_visits.isEmpty)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 24),
+                          child: Center(
+                            child: Text(
+                              'No visits yet',
+                              style: GoogleFonts.poppins(
+                                fontSize: 14,
+                                color: Colors.white70,
+                              ),
+                            ),
+                          ),
+                        ),
+                      _TambahButton(onTap: () => _bukaForm()),
+                    ],
+                  ),
+                ),
               ),
             ),
             _BottomBar(

@@ -212,104 +212,138 @@ class _SalesVisitScreenState extends State<SalesVisitScreen> {
         : 'All visits · ${namaBulan(_month.month)}';
     final adaFilter = _selected != null || _filter != null;
 
-    return ListView(
-      // padding bawah besar supaya isi tidak tertutup navbar melayang
-      padding: const EdgeInsets.fromLTRB(24, 0, 24, 120),
+    // Halaman tidak bergulir. Ringkasan, kalender, dan judul tetap di tempat;
+    // daftar ada di dalam kotak putih yang tingginya maksimal sekitar 3 baris.
+    // Isi lebih dari itu bisa digulir di dalam kotak. Kalau hanya 1-2 kunjungan,
+    // kotak pendek dan tidak bergulir.
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            for (final s in VisitTampilan.values) ...[
-              if (s != VisitTampilan.values.first) const SizedBox(width: 8),
-              Expanded(
-                child: _StatTile(
-                  status: s,
-                  jumlah: hitung(s),
-                  dipilih: _filter == s,
-                  onTap: () => _toggleFilter(s),
-                ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  for (final s in VisitTampilan.values) ...[
+                    if (s != VisitTampilan.values.first)
+                      const SizedBox(width: 8),
+                    Expanded(
+                      child: _StatTile(
+                        status: s,
+                        jumlah: hitung(s),
+                        dipilih: _filter == s,
+                        onTap: () => _toggleFilter(s),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+              const SizedBox(height: 10),
+              VisitCalendar(
+                month: _month,
+                selected: _selected,
+                statusPerHari: _statusPerHari,
+                onPrevMonth: () => _changeMonth(-1),
+                onNextMonth: () => _changeMonth(1),
+                onSelect: _selectDay,
+                cellHeight: 38,
               ),
             ],
-          ],
+          ),
         ),
-        const SizedBox(height: 14),
-        VisitCalendar(
-          month: _month,
-          selected: _selected,
-          statusPerHari: _statusPerHari,
-          onPrevMonth: () => _changeMonth(-1),
-          onNextMonth: () => _changeMonth(1),
-          onSelect: _selectDay,
-        ),
-        const SizedBox(height: 18),
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                judul,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.poppins(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.white,
+        Padding(
+          padding: const EdgeInsets.fromLTRB(24, 14, 24, 8),
+          child: SizedBox(
+            height: 26, // tetap, dengan atau tanpa tombol Show all
+            child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  judul,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.poppins(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.white,
+                  ),
                 ),
               ),
-            ),
-            if (adaFilter)
-              InkWell(
-                borderRadius: BorderRadius.circular(12),
-                onTap: _showAll,
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: AppColors.glass,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    'Show all',
-                    style: GoogleFonts.poppins(
-                      fontSize: 11.5,
-                      color: AppColors.white,
+              if (adaFilter)
+                InkWell(
+                  borderRadius: BorderRadius.circular(12),
+                  onTap: _showAll,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppColors.glass,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      'Show all',
+                      style: GoogleFonts.poppins(
+                        fontSize: 11.5,
+                        color: AppColors.white,
+                      ),
                     ),
                   ),
                 ),
-              ),
-          ],
+            ],
+          ),
+          ),
         ),
-        const SizedBox(height: 10),
-        if (list.isEmpty)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 28),
-            child: Center(
-              child: Text(
-                'No visits',
-                style: GoogleFonts.poppins(
-                  fontSize: 13,
-                  color: Colors.white70,
+        // Sisa layar (di atas navbar melayang). Kotak setinggi isinya, tapi
+        // tidak lebih dari ~3 baris dan tidak lebih dari ruang yang tersedia.
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(24, 0, 24, _ruangNavbar),
+            child: Align(
+              alignment: Alignment.topCenter,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: _tinggiMaks),
+                child: Material(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(24),
+                  clipBehavior: Clip.antiAlias,
+                  child: list.isEmpty
+                      ? SizedBox(
+                          height: 86, // sama dengan kotak berisi satu kunjungan
+                          child: Center(
+                            child: Text(
+                              'No visits',
+                              style: GoogleFonts.poppins(
+                                fontSize: 13,
+                                color: const Color(0xFF777777),
+                              ),
+                            ),
+                          ),
+                        )
+                      : ListView.separated(
+                          shrinkWrap: true,
+                          physics: const ClampingScrollPhysics(),
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          itemCount: list.length,
+                          separatorBuilder: (_, _) => const Divider(
+                              height: 1, color: Color(0xFFECECEC)),
+                          itemBuilder: (_, i) => _VisitRow(
+                              visit: list[i], onTap: () => _open(list[i])),
+                        ),
                 ),
               ),
             ),
-          )
-        else
-          Material(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(24),
-            clipBehavior: Clip.antiAlias,
-            child: ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              padding: const EdgeInsets.symmetric(vertical: 4),
-              itemCount: list.length,
-              separatorBuilder: (_, _) =>
-                  const Divider(height: 1, color: Color(0xFFECECEC)),
-              itemBuilder: (_, i) =>
-                  _VisitRow(visit: list[i], onTap: () => _open(list[i])),
-            ),
           ),
+        ),
       ],
     );
   }
+
+  /// Tinggi ruang navbar melayang di bagian bawah layar.
+  static const double _ruangNavbar = 104;
+
+  /// Tinggi maksimal kotak: 3 baris (tiap baris 78 px) + 2 garis + padding.
+  static const double _tinggiMaks = 4 * 78 + 3 + 8;
 }
 
 class _VisitRow extends StatelessWidget {
@@ -322,8 +356,10 @@ class _VisitRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
+      splashColor: const Color(0x14000000),
+      highlightColor: const Color(0x0D000000),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+        padding: const EdgeInsets.fromLTRB(14, 12, 10, 12),
         child: Row(
           children: [
             Container(
@@ -385,6 +421,21 @@ class _VisitRow extends StatelessWidget {
             ),
             const SizedBox(width: 8),
             VisitStatusChipLight(status: visit.tampilan),
+            const SizedBox(width: 8),
+            // Tanda bahwa baris ini bisa diketuk.
+            Container(
+              width: 28,
+              height: 28,
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                color: Color(0xFFF1F1F1),
+              ),
+              child: const Icon(
+                Icons.chevron_right,
+                size: 18,
+                color: Color(0xFF8A8A8A),
+              ),
+            ),
           ],
         ),
       ),
@@ -421,7 +472,7 @@ class _StatTile extends StatelessWidget {
         borderRadius: radius,
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 10),
+          padding: const EdgeInsets.symmetric(vertical: 8),
           child: Column(
             children: [
               Text(

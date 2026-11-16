@@ -298,31 +298,36 @@ class _SalesVisitScreenState extends State<SalesVisitScreen> {
       );
     }
     // Daftar berada di satu kotak putih, sama seperti tab Customer, Product,
-    // dan Order.
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
-      child: Material(
-        color: AppColors.white,
-        borderRadius: BorderRadius.circular(24),
-        clipBehavior: Clip.antiAlias,
-        child: RefreshIndicator(
-          color: AppColors.red,
-          onRefresh: _load,
-          child: ListView.separated(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.symmetric(vertical: 4),
-            itemCount: list.length,
-            separatorBuilder: (_, _) => const Divider(
-              height: 1,
-              thickness: 1,
-              color: Color(0xFFECECEC),
-            ),
-            itemBuilder: (_, i) => _SalesRow(
-              sales: list[i],
-              ringkasan:
-                  _ringkasan[list[i].id] ??
-                  const _Ringkasan(total: 0, selesai: 0),
-              onTap: () => _open(list[i]),
+    // dan Order. Align + shrinkWrap: kotak setinggi isinya kalau sales sedikit,
+    // dan berhenti di atas footer (lalu isinya bisa digulir) kalau sales banyak.
+    return Align(
+      alignment: Alignment.topCenter,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+        child: Material(
+          color: AppColors.white,
+          borderRadius: BorderRadius.circular(24),
+          clipBehavior: Clip.antiAlias,
+          child: RefreshIndicator(
+            color: AppColors.red,
+            onRefresh: _load,
+            child: ListView.separated(
+              shrinkWrap: true,
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              itemCount: list.length,
+              separatorBuilder: (_, _) => const Divider(
+                height: 1,
+                thickness: 1,
+                color: Color(0xFFECECEC),
+              ),
+              itemBuilder: (_, i) => _SalesRow(
+                sales: list[i],
+                ringkasan:
+                    _ringkasan[list[i].id] ??
+                    const _Ringkasan(total: 0, selesai: 0),
+                onTap: () => _open(list[i]),
+              ),
             ),
           ),
         ),
