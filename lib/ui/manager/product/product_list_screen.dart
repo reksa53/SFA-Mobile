@@ -285,6 +285,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
                         ),
                       ),
                     ),
+                    const SizedBox(width: 12),
                     GestureDetector(
                       onTap: _openFilter,
                       child: Row(

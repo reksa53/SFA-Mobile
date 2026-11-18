@@ -94,7 +94,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
         child: Column(
           children: [
             const Padding(
-              padding: EdgeInsets.fromLTRB(24, 8, 24, 0),
+              padding: EdgeInsets.fromLTRB(24, 8, 24, 12),
               child: Row(
                 children: [
                   BackBtn(),
@@ -112,7 +112,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
             ),
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
+                padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
                 child: Form(
                   key: _key,
                   child: Column(
@@ -353,14 +353,12 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                           ),
                         ),
                       ]),
+                      const SizedBox(height: 24),
+                      PillButton('Simpan Produk', onPressed: _save),
                     ],
                   ),
                 ),
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
-              child: PillButton('Simpan Produk', onPressed: _save),
             ),
           ],
         ),
