@@ -1,4 +1,4 @@
-const kNearExpiredDays = 730; // shortcut: aturan tebakan, samakan dengan backend
+const kNearExpiredDays = 730; // shortcut: aturan tebakan, samakan dengan NEAR_EXPIRED_DAYS di ProductController
 
 DateTime today() {
   final n = DateTime.now();
@@ -13,6 +13,14 @@ class ProductBatch {
     required this.qty,
     required this.receivedAt,
   });
+
+  factory ProductBatch.fromJson(Map<String, dynamic> j) => ProductBatch(
+        number: j['batch_number'],
+        expiry: j['expiry_date'] == null ? null : DateTime.parse(j['expiry_date']),
+        initialQty: j['initial_quantity'],
+        qty: j['quantity'],
+        receivedAt: DateTime.parse(j['received_at']),
+      );
 
   final String number;
   final DateTime? expiry; // null = tanpa masa kedaluwarsa
@@ -30,6 +38,9 @@ class ProductBatch {
 
 class Product {
   Product({
+
+    this.id, 
+
     required this.sku,
     required this.name,
     this.brand,
@@ -37,9 +48,31 @@ class Product {
     this.unit = 'pcs',
     required this.price,
     this.isActive = true,
+    int? stock,
+    DateTime? nearestExpiry,
     List<ProductBatch>? batches,
-  }) : batches = batches ?? [];
+  })  : _stock = stock,
+        _nearestExpiry = nearestExpiry,
+        batches = batches ?? [];
 
+  // List dari API tidak membawa batch, hanya stock + nearest_expiry. Batch terisi lewat GET /products/{id}.
+  factory Product.fromJson(Map<String, dynamic> j) => Product(
+        id: j['id'],
+        sku: j['sku'],
+        name: j['name'],
+        brand: j['brand'],
+        category: j['category'],
+        unit: j['unit'] ?? 'pcs',
+        price: (j['price'] as num).toInt(),
+        isActive: j['is_active'] ?? true,
+        stock: j['stock'],
+        nearestExpiry: j['nearest_expiry'] == null ? null : DateTime.parse(j['nearest_expiry']),
+        batches: (j['batches'] as List? ?? [])
+            .map((b) => ProductBatch.fromJson(b))
+            .toList(),
+      );
+
+  final int? id;
   final String sku;
   final String name;
   final String? brand;
@@ -48,6 +81,8 @@ class Product {
   final int price; // Rupiah
   final bool isActive;
   final List<ProductBatch> batches;
+  final int? _stock;
+  final DateTime? _nearestExpiry;
 
   // urut FEFO: expired terdekat dulu, tanpa expired paling akhir
   List<ProductBatch> get fefo => [...batches]
@@ -58,15 +93,20 @@ class Product {
       return a.expiry!.compareTo(b.expiry!);
     });
 
-  // stok = jumlah sisa batch yang belum expired (tidak ada kolom stock)
-  int get stock => batches.where((b) => !b.expired).fold(0, (s, b) => s + b.qty);
+  // dari backend bila ada; kalau tidak, jumlah sisa batch yang belum expired
+  int get stock =>
+      _stock ?? batches.where((b) => !b.expired).fold(0, (s, b) => s + b.qty);
 
   DateTime? get nearestExpiry {
+    if (_nearestExpiry != null) return _nearestExpiry;
     final d = batches
         .where((b) => !b.expired && b.qty > 0 && b.expiry != null)
         .map((b) => b.expiry!);
     return d.isEmpty ? null : d.reduce((a, b) => a.isBefore(b) ? a : b);
   }
 
-  bool get nearExpired => batches.any((b) => b.qty > 0 && b.nearExpired);
+  bool get nearExpired {
+    final d = nearestExpiry;
+    return d != null && d.isBefore(today().add(const Duration(days: kNearExpiredDays)));
+  }
 }

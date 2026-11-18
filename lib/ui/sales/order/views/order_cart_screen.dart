@@ -1,57 +1,75 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:sfa_mobile/data/models/customer_store.dart';
 import 'package:sfa_mobile/data/models/order_item.dart';
-import 'package:sfa_mobile/data/repositories/order_repository.dart';
+import 'package:sfa_mobile/data/models/product.dart';
+import 'package:sfa_mobile/data/services/order_service.dart';
+import 'package:sfa_mobile/data/services/product_service.dart';
 import 'package:sfa_mobile/ui/core/theme/app_colors.dart';
 import 'package:sfa_mobile/ui/core/theme/app_text_styles.dart';
 import 'package:sfa_mobile/ui/sales/order/widgets/cart_product_tile.dart';
-import 'package:sfa_mobile/utils/rupiah.dart';
+import 'package:sfa_mobile/utils/format.dart';
 
 class OrderCartScreen extends StatefulWidget {
   const OrderCartScreen({super.key, required this.store});
 
-  final StoreOption store;
+  final CustomerStore store;
 
   @override
   State<OrderCartScreen> createState() => _OrderCartScreenState();
 }
 
 class _OrderCartScreenState extends State<OrderCartScreen> {
-  final _catalog = OrderRepository.instance.catalog();
-  final _qty = <String, int>{}; // nama produk -> jumlah (hanya yang > 0)
+  final _catalog = ProductService.instance.active;
+  final _qty = <String, int>{}; // sku -> jumlah (hanya yang > 0)
   String _query = '';
   bool _onlySelected = false;
+  bool _submitting = false;
 
-  int _qtyOf(CatalogItem c) => _qty[c.product.name] ?? 0;
+  int _qtyOf(Product p) => _qty[p.sku] ?? 0;
 
-  int get _total => _catalog.fold(0, (sum, c) => sum + c.price * _qtyOf(c));
+  int get _total => _catalog.fold(0, (sum, p) => sum + p.price * _qtyOf(p));
 
-  void _setQty(CatalogItem c, int value) {
+  void _setQty(Product p, int value) {
     setState(() {
       if (value <= 0) {
-        _qty.remove(c.product.name);
+        _qty.remove(p.sku);
         if (_qty.isEmpty) _onlySelected = false;
       } else {
-        _qty[c.product.name] = value;
+        _qty[p.sku] = value;
       }
     });
   }
 
-  void _submit() {
+  Future<void> _submit() async {
+    if (_submitting) return;
+    setState(() => _submitting = true);
+
     final items = [
-      for (final c in _catalog)
-        if (_qtyOf(c) > 0)
+      for (final p in _catalog)
+        if (_qtyOf(p) > 0 && p.id != null)
           OrderItem(
-            productName: c.product.name,
-            unitPrice: c.price,
-            quantity: _qtyOf(c),
+            productId: p.id!,
+            productName: p.name,
+            unitPrice: p.price,
+            quantity: _qtyOf(p),
           ),
     ];
-    final order = OrderRepository.instance.submit(
-      storeName: widget.store.name,
-      salesId: OrderRepository.currentSalesId,
-      items: items,
-    );
-    Navigator.of(context).pop(order);
+
+    try {
+      final order = await OrderService().create(
+        customerId: widget.store.id!,
+        items: items,
+      );
+      if (mounted) Navigator.of(context).pop(order);
+    } on DioException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(OrderService.errorMessage(e))));
+      }
+    } finally {
+      if (mounted) setState(() => _submitting = false);
+    }
   }
 
   Future<void> _confirmDiscard() async {
@@ -78,9 +96,9 @@ class _OrderCartScreenState extends State<OrderCartScreen> {
   @override
   Widget build(BuildContext context) {
     final query = _query.toLowerCase();
-    final visible = _catalog.where((c) {
-      final matches = c.product.name.toLowerCase().contains(query);
-      return matches && (!_onlySelected || _qtyOf(c) > 0);
+    final visible = _catalog.where((p) {
+      final matches = p.name.toLowerCase().contains(query);
+      return matches && (!_onlySelected || _qtyOf(p) > 0);
     }).toList();
 
     final searchBorder = OutlineInputBorder(
@@ -108,17 +126,15 @@ class _OrderCartScreenState extends State<OrderCartScreen> {
                         color: AppColors.white,
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(Icons.storefront_outlined,
-                          color: AppColors.black),
+                      child: const Icon(Icons.storefront_outlined, color: AppColors.black),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        widget.store.name,
+                        widget.store.storeName,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: AppTextStyles.cardTitle
-                            .copyWith(fontSize: 22, color: AppColors.white),
+                        style: AppTextStyles.cardTitle.copyWith(fontSize: 22, color: AppColors.white),
                       ),
                     ),
                   ],
@@ -134,12 +150,10 @@ class _OrderCartScreenState extends State<OrderCartScreen> {
                         style: AppTextStyles.cardBody.copyWith(fontSize: 14),
                         decoration: InputDecoration(
                           hintText: 'Cari produk',
-                          prefixIcon:
-                              const Icon(Icons.search, color: AppColors.black),
+                          prefixIcon: const Icon(Icons.search, color: AppColors.black),
                           filled: true,
                           fillColor: AppColors.white,
-                          contentPadding:
-                              const EdgeInsets.symmetric(vertical: 14),
+                          contentPadding: const EdgeInsets.symmetric(vertical: 14),
                           border: searchBorder,
                           enabledBorder: searchBorder,
                           focusedBorder: searchBorder,
@@ -150,9 +164,7 @@ class _OrderCartScreenState extends State<OrderCartScreen> {
                     _CartButton(
                       count: _qty.length,
                       active: _onlySelected,
-                      onTap: _qty.isEmpty
-                          ? null
-                          : () => setState(() => _onlySelected = !_onlySelected),
+                      onTap: _qty.isEmpty ? null : () => setState(() => _onlySelected = !_onlySelected),
                     ),
                   ],
                 ),
@@ -161,32 +173,25 @@ class _OrderCartScreenState extends State<OrderCartScreen> {
               Expanded(
                 child: Container(
                   margin: const EdgeInsets.symmetric(horizontal: 20),
-                  decoration: BoxDecoration(
-                    color: AppColors.white,
-                    borderRadius: BorderRadius.circular(24),
-                  ),
+                  decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(24)),
                   clipBehavior: Clip.antiAlias,
                   child: visible.isEmpty
                       ? Center(
                           child: Text(
                             'Produk tidak ditemukan',
-                            style: AppTextStyles.cardBody.copyWith(
-                              fontSize: 14,
-                              color: const Color(0xFF6B7280),
-                            ),
+                            style: AppTextStyles.cardBody.copyWith(fontSize: 14, color: const Color(0xFF6B7280)),
                           ),
                         )
                       : ListView.separated(
                           padding: EdgeInsets.zero,
                           itemCount: visible.length,
-                          separatorBuilder: (_, _) => const Divider(
-                              height: 1, color: Color(0xFFEDEDED)),
+                          separatorBuilder: (_, _) => const Divider(height: 1, color: Color(0xFFEDEDED)),
                           itemBuilder: (_, i) {
-                            final c = visible[i];
+                            final p = visible[i];
                             return CartProductTile(
-                              item: c,
-                              quantity: _qtyOf(c),
-                              onChanged: (v) => _setQty(c, v),
+                              product: p,
+                              quantity: _qtyOf(p),
+                              onChanged: (v) => _setQty(p, v),
                             );
                           },
                         ),
@@ -196,10 +201,7 @@ class _OrderCartScreenState extends State<OrderCartScreen> {
                 padding: const EdgeInsets.fromLTRB(20, 14, 20, 12),
                 child: Container(
                   padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: AppColors.white,
-                    borderRadius: BorderRadius.circular(24),
-                  ),
+                  decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(24)),
                   child: Row(
                     children: [
                       SizedBox(
@@ -210,29 +212,29 @@ class _OrderCartScreenState extends State<OrderCartScreen> {
                             foregroundColor: AppColors.black,
                             minimumSize: const Size(0, 48),
                             side: const BorderSide(color: Color(0xFF9B9B9B)),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                            ),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                           ),
-                          child: Text('Back',
-                              style: AppTextStyles.button.copyWith(fontSize: 15)),
+                          child: Text('Back', style: AppTextStyles.button.copyWith(fontSize: 15)),
                         ),
                       ),
                       const SizedBox(width: 10),
                       Expanded(
                         child: FilledButton(
-                          onPressed: _total > 0 ? _submit : null,
+                          onPressed: (_total > 0 && !_submitting) ? _submit : null,
                           style: FilledButton.styleFrom(
                             backgroundColor: AppColors.red,
                             foregroundColor: AppColors.white,
                             disabledBackgroundColor: AppColors.grey,
                             minimumSize: const Size(0, 48),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                            ),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                           ),
-                          child: Text('Order ${formatRupiah(_total)}',
-                              style: AppTextStyles.button.copyWith(fontSize: 15)),
+                          child: _submitting
+                              ? const SizedBox(
+                                  height: 18,
+                                  width: 18,
+                                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                )
+                              : Text('Order ${fmtRp(_total)}', style: AppTextStyles.button.copyWith(fontSize: 15)),
                         ),
                       ),
                     ],
@@ -248,11 +250,7 @@ class _OrderCartScreenState extends State<OrderCartScreen> {
 }
 
 class _CartButton extends StatelessWidget {
-  const _CartButton({
-    required this.count,
-    required this.active,
-    required this.onTap,
-  });
+  const _CartButton({required this.count, required this.active, required this.onTap});
 
   final int count;
   final bool active;
@@ -285,13 +283,8 @@ class _CartButton extends StatelessWidget {
             right: -6,
             child: Container(
               padding: const EdgeInsets.all(5),
-              decoration: const BoxDecoration(
-                color: AppColors.red,
-                shape: BoxShape.circle,
-              ),
-              child: Text('$count',
-                  style: AppTextStyles.navLabel
-                      .copyWith(color: AppColors.white)),
+              decoration: const BoxDecoration(color: AppColors.red, shape: BoxShape.circle),
+              child: Text('$count', style: AppTextStyles.navLabel.copyWith(color: AppColors.white)),
             ),
           ),
       ],

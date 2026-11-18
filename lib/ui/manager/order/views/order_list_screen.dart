@@ -8,19 +8,18 @@ import 'package:sfa_mobile/ui/manager/order/widgets/order_tile.dart';
 
 // Data dummy sementara, ganti dengan data dari API nanti.
 const _dummyOrders = [
-  Order(storeName: 'TOKO JAYA TERBUKA ABADI', invoice: 'KAJA0817968BHV', status: OrderStatus.rejected),
+  Order(storeName: 'TOKO JAYA TERBUKA ABADI', status: OrderStatus.rejected),
   Order(storeName: 'TOKO JAYA TERBUKA ABADI', status: OrderStatus.pending),
   Order(storeName: 'TOKO JAYA TERBUKA ABADI', invoice: 'KAJA0817968BHV', status: OrderStatus.accepted),
-  Order(storeName: 'TOKO JAYA TERBUKA ABADI', invoice: 'KAJA0817968BHV', status: OrderStatus.rejected),
+  Order(storeName: 'TOKO JAYA TERBUKA ABADI', status: OrderStatus.rejected),
   Order(storeName: 'TOKO JAYA TERBUKA ABADI', invoice: 'KAJA0817968BHV', status: OrderStatus.accepted),
   Order(storeName: 'TOKO JAYA TERBUKA ABADI', status: OrderStatus.pending),
   Order(storeName: 'TOKO JAYA TERBUKA ABADI', status: OrderStatus.pending),
   Order(storeName: 'TOKO JAYA TERBUKA ABADI', status: OrderStatus.pending),
-  Order(storeName: 'TOKO JAYA TERBUKA ABADI', invoice: 'KAJA0817968BHV', status: OrderStatus.rejected),
+  Order(storeName: 'TOKO JAYA TERBUKA ABADI', status: OrderStatus.rejected),
   Order(storeName: 'TOKO JAYA TERBUKA ABADI', invoice: 'KAJA0817968BHV', status: OrderStatus.accepted),
   Order(storeName: 'TOKO JAYA TERBUKA ABADI', status: OrderStatus.pending),
 ];
-
 class OrderListScreen extends StatefulWidget {
   const OrderListScreen({super.key});
 
