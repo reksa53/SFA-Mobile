@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -18,7 +19,7 @@ class VisitScreen extends StatefulWidget {
   const VisitScreen({
     super.key,
     required this.sales,
-    this.repository = const DummySalesVisitRepository(),
+    this.repository = const ApiSalesVisitRepository(),
     this.onVisitsChanged,
   });
 
@@ -118,17 +119,77 @@ class _VisitScreenState extends State<VisitScreen> {
     return peta;
   }
 
+  void _pesan(String teks) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(teks)));
+  }
+
+  /// Pesan error dari server (422 / abort Laravel) kalau ada.
+  String _pesanError(Object e, String cadangan) {
+    if (e is DioException) {
+      final data = e.response?.data;
+      if (data is Map) {
+        final errors = data['errors'];
+        if (errors is Map && errors.isNotEmpty) {
+          final first = errors.values.first;
+          if (first is List && first.isNotEmpty) return first.first.toString();
+        }
+        final pesan = data['message'];
+        if (pesan is String && pesan.isNotEmpty) return pesan;
+      }
+      if (e.response == null) return 'Cannot reach the server';
+    }
+    return cadangan;
+  }
+
   Future<void> _onEdit() async {
+    // Daftar toko diambil dulu supaya dropdown di form berisi customer asli.
+    final List<TokoPilihan> toko;
+    try {
+      toko = await widget.repository.getTokoPilihan();
+    } catch (e) {
+      if (!mounted) return;
+      _pesan(_pesanError(e, 'Failed to load stores'));
+      return;
+    }
+    if (!mounted) return;
+
     final hasil = await Navigator.of(context).push<List<Visit>>(
       MaterialPageRoute(
-        builder: (_) => EditVisitScreen(sales: widget.sales, visits: _visits),
+        builder: (_) => EditVisitScreen(
+          sales: widget.sales,
+          visits: _visits,
+          toko: toko,
+        ),
       ),
     );
     if (hasil == null || !mounted) return;
-    setState(() => _visits = hasil);
-    widget.onVisitsChanged?.call(hasil);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Visit schedule saved')),
+
+    try {
+      final tersimpan = await widget.repository.saveVisits(
+        widget.sales.id,
+        _visits,
+        hasil,
+      );
+      if (!mounted) return;
+      setState(() => _visits = tersimpan);
+      widget.onVisitsChanged?.call(tersimpan);
+      _pesan('Visit schedule saved');
+    } catch (e) {
+      if (!mounted) return;
+      _pesan(_pesanError(e, 'Failed to save schedule'));
+      _load(); // sinkronkan lagi dengan isi server
+    }
+  }
+
+  /// Detail kunjungan (hanya baca): toko, alamat, tanggal, status, catatan.
+  void _detail(Visit v) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: const Color(0xFF565656),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+      ),
+      builder: (_) => _VisitInfoSheet(visit: v),
     );
   }
 
@@ -320,7 +381,8 @@ class _VisitScreenState extends State<VisitScreen> {
                           itemCount: list.length,
                           separatorBuilder: (_, _) => const Divider(
                               height: 1, color: Color(0xFFECECEC)),
-                          itemBuilder: (_, i) => _VisitRow(visit: list[i]),
+                          itemBuilder: (_, i) => _VisitRow(
+                              visit: list[i], onTap: () => _detail(list[i])),
                         ),
                 ),
               ),
@@ -337,14 +399,19 @@ class _VisitScreenState extends State<VisitScreen> {
 
 /// Satu baris kunjungan di dalam kotak putih.
 class _VisitRow extends StatelessWidget {
-  const _VisitRow({required this.visit});
+  const _VisitRow({required this.visit, required this.onTap});
 
   final Visit visit;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+    return InkWell(
+      onTap: onTap,
+      splashColor: const Color(0x14000000),
+      highlightColor: const Color(0x0D000000),
+      child: Padding(
+      padding: const EdgeInsets.fromLTRB(14, 12, 10, 12),
       child: Row(
         children: [
           Container(
@@ -406,7 +473,134 @@ class _VisitRow extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           VisitStatusChipLight(status: visit.tampilan),
+          const SizedBox(width: 8),
+          // Tanda bahwa baris ini bisa diketuk.
+          Container(
+            width: 28,
+            height: 28,
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+              color: Color(0xFFF1F1F1),
+            ),
+            child: const Icon(
+              Icons.chevron_right,
+              size: 18,
+              color: Color(0xFF8A8A8A),
+            ),
+          ),
         ],
+      ),
+      ),
+    );
+  }
+}
+
+/// Lembar detail kunjungan untuk Manager (hanya baca).
+class _VisitInfoSheet extends StatelessWidget {
+  const _VisitInfoSheet({required this.visit});
+
+  final Visit visit;
+
+  @override
+  Widget build(BuildContext context) {
+    final label = GoogleFonts.poppins(
+      fontSize: 12.5,
+      fontWeight: FontWeight.w600,
+      color: Colors.white70,
+    );
+    final catatan = visit.catatan.trim();
+
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(24, 10, 24, 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.white30,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              visit.tokoNama.toUpperCase(),
+              style: GoogleFonts.poppins(
+                fontSize: 19,
+                fontWeight: FontWeight.w700,
+                height: 1.25,
+                color: AppColors.white,
+              ),
+            ),
+            if (visit.alamat.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Padding(
+                    padding: EdgeInsets.only(top: 1),
+                    child: Icon(Icons.location_on_outlined,
+                        size: 17, color: Colors.white60),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      visit.alamat,
+                      style: GoogleFonts.poppins(
+                        fontSize: 13,
+                        color: Colors.white70,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                const Icon(Icons.calendar_today_outlined,
+                    size: 17, color: Colors.white60),
+                const SizedBox(width: 8),
+                Text(
+                  formatTanggal(visit.tanggal),
+                  style: GoogleFonts.poppins(
+                    fontSize: 13,
+                    color: Colors.white70,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            VisitStatusChipDark(status: visit.tampilan),
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 14),
+              child: Divider(height: 1, color: Colors.white12),
+            ),
+            Text('Notes from Sales', style: label),
+            const SizedBox(height: 6),
+            Container(
+              width: double.infinity,
+              constraints: const BoxConstraints(minHeight: 48),
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: const Color(0xFF3F3F3F),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                catatan.isEmpty ? '—' : catatan,
+                style: GoogleFonts.poppins(
+                  fontSize: 14,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

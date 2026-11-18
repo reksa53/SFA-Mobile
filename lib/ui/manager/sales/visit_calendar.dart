@@ -22,6 +22,7 @@ class VisitCalendar extends StatelessWidget {
     required this.onNextMonth,
     required this.onSelect,
     this.cellHeight = 46,
+    this.compact = false,
   });
 
   /// Tanggal 1 bulan yang ditampilkan.
@@ -34,8 +35,11 @@ class VisitCalendar extends StatelessWidget {
   final VoidCallback onNextMonth;
   final ValueChanged<DateTime> onSelect;
 
-  /// Tinggi satu baris tanggal. Bawaan 46; layar Sales memakai 38 (padat).
+  /// Tinggi satu baris tanggal. Bawaan 46; layar Sales memakai 31 + compact.
   final double cellHeight;
+
+  /// Mode rapat (layar Sales): padding, judul, dan lingkaran tanggal diperkecil.
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -49,32 +53,40 @@ class VisitCalendar extends StatelessWidget {
         DateTime(month.year, month.month, 1 - offset + i);
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(10, 12, 10, 8),
+      padding: compact
+          ? const EdgeInsets.fromLTRB(10, 6, 10, 4)
+          : const EdgeInsets.fromLTRB(10, 12, 10, 8),
       decoration: BoxDecoration(
         color: ManagerColors.calendar,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(compact ? 18 : 20),
         border: Border.all(color: Colors.white10),
       ),
       child: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(4, 0, 4, 6),
+            padding: EdgeInsets.fromLTRB(4, 0, 4, compact ? 2 : 6),
             child: Row(
               children: [
-                _NavBulan(icon: Icons.chevron_left, onTap: onPrevMonth),
+                _NavBulan(
+                    icon: Icons.chevron_left,
+                    onTap: onPrevMonth,
+                    compact: compact),
                 Expanded(
                   child: Center(
                     child: Text(
                       '${namaBulan(month.month)} ${month.year}',
                       style: GoogleFonts.poppins(
-                        fontSize: 16,
+                        fontSize: compact ? 15 : 16,
                         fontWeight: FontWeight.w700,
                         color: AppColors.white,
                       ),
                     ),
                   ),
                 ),
-                _NavBulan(icon: Icons.chevron_right, onTap: onNextMonth),
+                _NavBulan(
+                    icon: Icons.chevron_right,
+                    onTap: onNextMonth,
+                    compact: compact),
               ],
             ),
           ),
@@ -83,12 +95,14 @@ class VisitCalendar extends StatelessWidget {
               for (final h in _hari)
                 Expanded(
                   child: Padding(
-                    padding: const EdgeInsets.only(top: 4, bottom: 6),
+                    padding: compact
+                        ? const EdgeInsets.symmetric(vertical: 2)
+                        : const EdgeInsets.only(top: 4, bottom: 6),
                     child: Center(
                       child: Text(
                         h,
                         style: GoogleFonts.poppins(
-                          fontSize: 10.5,
+                          fontSize: compact ? 10 : 10.5,
                           fontWeight: FontWeight.w500,
                           color: Colors.white70,
                         ),
@@ -113,6 +127,7 @@ class VisitCalendar extends StatelessWidget {
                           statusPerHari[tanggalKe(r * 7 + c)] ?? const {},
                       onTap: onSelect,
                       cellHeight: cellHeight,
+                      compact: compact,
                     ),
                   ),
               ],
@@ -124,10 +139,15 @@ class VisitCalendar extends StatelessWidget {
 }
 
 class _NavBulan extends StatelessWidget {
-  const _NavBulan({required this.icon, required this.onTap});
+  const _NavBulan({
+    required this.icon,
+    required this.onTap,
+    this.compact = false,
+  });
 
   final IconData icon;
   final VoidCallback onTap;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -138,9 +158,9 @@ class _NavBulan extends StatelessWidget {
         borderRadius: BorderRadius.circular(10),
         onTap: onTap,
         child: SizedBox(
-          width: 34,
-          height: 34,
-          child: Icon(icon, size: 22, color: AppColors.white),
+          width: compact ? 30 : 34,
+          height: compact ? 30 : 34,
+          child: Icon(icon, size: compact ? 20 : 22, color: AppColors.white),
         ),
       ),
     );
@@ -156,6 +176,7 @@ class _Hari extends StatelessWidget {
     required this.status,
     required this.onTap,
     required this.cellHeight,
+    required this.compact,
   });
 
   final DateTime tanggal;
@@ -165,10 +186,11 @@ class _Hari extends StatelessWidget {
   final Set<VisitTampilan> status;
   final ValueChanged<DateTime> onTap;
   final double cellHeight;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
-    final lingkar = cellHeight >= 44 ? 30.0 : 28.0;
+    final lingkar = compact ? 23.0 : (cellHeight >= 44 ? 30.0 : 28.0);
     final luar = tanggal.month != bulanIni;
     final adalahHariIni = isSameDay(tanggal, hariIni);
     // Urutan titik tetap sesuai urutan enum (maksimal 3).
@@ -196,22 +218,22 @@ class _Hari extends StatelessWidget {
               child: Text(
                 '${tanggal.day}',
                 style: GoogleFonts.poppins(
-                  fontSize: 14,
+                  fontSize: compact ? 13 : 14,
                   fontWeight: luar ? FontWeight.w500 : FontWeight.w600,
                   color: luar ? Colors.white38 : AppColors.white,
                 ),
               ),
             ),
-            const SizedBox(height: 2),
+            SizedBox(height: compact ? 0 : 2),
             SizedBox(
-              height: 7,
+              height: compact ? 5 : 7,
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   for (final s in titik)
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 1),
-                      child: StatusDot(status: s, size: 5),
+                      child: StatusDot(status: s, size: compact ? 4 : 5),
                     ),
                 ],
               ),

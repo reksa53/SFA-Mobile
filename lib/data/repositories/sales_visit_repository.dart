@@ -15,6 +15,18 @@ abstract class SalesVisitRepository {
 
   /// Sales melaporkan hasil kunjungan: status visited / notVisited + catatan.
   Future<Visit> reportVisit(Visit visit, VisitStatus status, String catatan);
+
+  /// Daftar toko (customer) untuk dropdown di form Edit Visit.
+  Future<List<TokoPilihan>> getTokoPilihan();
+
+  /// Manager menyimpan jadwal satu sales: membandingkan [awal] dengan [baru],
+  /// lalu menghapus / mengubah / menambah ke server. Mengembalikan daftar
+  /// terbaru dari server.
+  Future<List<Visit>> saveVisits(
+    int salesId,
+    List<Visit> awal,
+    List<Visit> baru,
+  );
 }
 
 /// Data sementara. Dipakai selama endpoint Laravel belum siap. Untuk pindah ke
@@ -91,6 +103,22 @@ class DummySalesVisitRepository implements SalesVisitRepository {
     return baru;
   }
 
+  @override
+  Future<List<TokoPilihan>> getTokoPilihan() async => [
+        for (var i = 0; i < _toko.length; i++)
+          TokoPilihan(id: i + 1, nama: _toko[i]),
+      ];
+
+  @override
+  Future<List<Visit>> saveVisits(
+    int salesId,
+    List<Visit> awal,
+    List<Visit> baru,
+  ) async {
+    await Future<void>.delayed(const Duration(milliseconds: 300));
+    return baru;
+  }
+
   static const _sales = [
     Sales(id: 1, nama: 'Icha Clowy'),
     Sales(id: 2, nama: 'Bagus Subekti'),
@@ -152,15 +180,17 @@ class DummySalesVisitRepository implements SalesVisitRepository {
 }
 
 /// Implementasi ke Laravel.
-///
-/// ASUMSI endpoint (belum dicocokkan dengan repo backend):
-///   GET /api/sales                -> {"data": [ {id, name, photo}, ... ]}
-///   GET /api/sales/{id}/visits    -> {"data": [ {id, store_name, visit_date, status}, ... ]}
-/// Ubah path dan bentuk response di sini kalau di backend berbeda.
+///   GET    /sales/{id}/visits       (Manager)
+///   POST   /visits                  (Manager: sales_id, customer_id, visit_date)
+///   PUT    /visits/{id}             (Manager: customer_id, visit_date)
+///   DELETE /visits/{id}             (Manager)
+///   GET    /customers               (daftar toko, berhalaman)
+///   GET    /my-visits               (Sales)
+///   PATCH  /visits/{id}/report      (Sales: status + note)
 class ApiSalesVisitRepository implements SalesVisitRepository {
-  ApiSalesVisitRepository({Dio? dio}) : _dio = dio ?? ApiClient.instance.dio;
+  const ApiSalesVisitRepository();
 
-  final Dio _dio;
+  Dio get _dio => ApiClient.instance.dio;
 
   @override
   Future<List<Sales>> getSales() async {
@@ -180,8 +210,6 @@ class ApiSalesVisitRepository implements SalesVisitRepository {
         .toList();
   }
 
-  /// ASUMSI: GET /api/my-visits  dan  PATCH /api/visits/{id}
-  /// dengan body {status: visited|not_visited, notes: "..."}.
   @override
   Future<List<Visit>> getMyVisits() async {
     final res = await _dio.get('/my-visits');
@@ -194,10 +222,76 @@ class ApiSalesVisitRepository implements SalesVisitRepository {
   @override
   Future<Visit> reportVisit(
       Visit visit, VisitStatus status, String catatan) async {
-    await _dio.patch('/visits/${visit.id}', data: {
+    final res = await _dio.patch('/visits/${visit.id}/report', data: {
       'status': status == VisitStatus.visited ? 'visited' : 'not_visited',
-      'notes': catatan,
+      'note': catatan,
     });
-    return visit.copyWith(status: status, catatan: catatan);
+    return Visit.fromJson(res.data['data'] as Map<String, dynamic>);
   }
+
+  @override
+  Future<List<TokoPilihan>> getTokoPilihan() async {
+    final hasil = <TokoPilihan>[];
+    var page = 1;
+    var terakhir = 1;
+    do {
+      final res = await _dio.get('/customers', queryParameters: {'page': page});
+      final body = res.data as Map<String, dynamic>;
+      for (final e in body['data'] as List) {
+        final m = e as Map<String, dynamic>;
+        hasil.add(
+          TokoPilihan(id: (m['id'] as num).toInt(), nama: m['name'].toString()),
+        );
+      }
+      terakhir = ((body['meta'] as Map?)?['last_page'] as num?)?.toInt() ?? 1;
+      page++;
+    } while (page <= terakhir);
+    return hasil;
+  }
+
+  @override
+  Future<List<Visit>> saveVisits(
+    int salesId,
+    List<Visit> awal,
+    List<Visit> baru,
+  ) async {
+    final idAwal = {for (final v in awal) v.id};
+    final idBaru = {for (final v in baru) v.id};
+
+    // 1. Dihapus: ada di awal, tidak ada di baru (hanya yang masih scheduled).
+    for (final v in awal) {
+      if (!idBaru.contains(v.id) && v.status == VisitStatus.scheduled) {
+        await _dio.delete('/visits/${v.id}');
+      }
+    }
+
+    // 2. Diubah: toko atau tanggalnya berbeda dari yang awal.
+    for (final v in baru) {
+      if (!idAwal.contains(v.id) || v.customerId == null) continue;
+      final lama = awal.firstWhere((x) => x.id == v.id);
+      if (lama.customerId != v.customerId || lama.tanggal != v.tanggal) {
+        await _dio.put('/visits/${v.id}', data: {
+          'customer_id': v.customerId,
+          'visit_date': _tgl(v.tanggal),
+        });
+      }
+    }
+
+    // 3. Ditambah: id belum ada di server.
+    for (final v in baru) {
+      if (idAwal.contains(v.id) || v.customerId == null) continue;
+      await _dio.post('/visits', data: {
+        'sales_id': salesId,
+        'customer_id': v.customerId,
+        'visit_date': _tgl(v.tanggal),
+      });
+    }
+
+    return getVisits(salesId);
+  }
+
+  /// yyyy-MM-dd, format yang diminta Laravel.
+  static String _tgl(DateTime d) =>
+      '${d.year}-${d.month.toString().padLeft(2, '0')}-'
+      '${d.day.toString().padLeft(2, '0')}';
 }

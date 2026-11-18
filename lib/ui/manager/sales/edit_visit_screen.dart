@@ -11,14 +11,6 @@ import '../../core/theme/manager_colors.dart';
 import 'sales_avatar.dart';
 import 'visit_card.dart';
 
-/// Pilihan toko di form. TODO: ganti dengan daftar dari modul Customer / API.
-const _tokoContoh = [
-  'TOKO AKBAR AMIRUL',
-  'TOKO PURNAMA ABADI SENTOSA',
-  'TOKO JAYA AGUNG MANDIRI',
-  'TOKO KEMBALI DJAYA',
-];
-
 const _panel = Color(0xFF565656);
 const _warnaKolom = Color(0xFF3F3F3F);
 const _merahMuda = Color(0xFFFF8A8A);
@@ -33,10 +25,14 @@ class EditVisitScreen extends StatefulWidget {
     super.key,
     required this.sales,
     required this.visits,
+    required this.toko,
   });
 
   final Sales sales;
   final List<Visit> visits;
+
+  /// Pilihan toko untuk dropdown (customer dari server).
+  final List<TokoPilihan> toko;
 
   @override
   State<EditVisitScreen> createState() => _EditVisitScreenState();
@@ -54,9 +50,6 @@ class _EditVisitScreenState extends State<EditVisitScreen> {
 
   void _urutkan() => _visits.sort((a, b) => a.tanggal.compareTo(b.tanggal));
 
-  List<String> get _daftarToko =>
-      {..._tokoContoh, ..._visits.map((v) => v.tokoNama)}.toList();
-
   void _info(String teks) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(teks)),
@@ -71,7 +64,7 @@ class _EditVisitScreenState extends State<EditVisitScreen> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
       ),
-      builder: (_) => _VisitForm(awal: awal, daftarToko: _daftarToko),
+      builder: (_) => _VisitForm(awal: awal, daftarToko: widget.toko),
     );
     if (hasil == null || !mounted) return;
 
@@ -629,7 +622,7 @@ class _VisitForm extends StatefulWidget {
 
   /// null = tambah kunjungan baru, ada isi = ubah kunjungan itu.
   final Visit? awal;
-  final List<String> daftarToko;
+  final List<TokoPilihan> daftarToko;
 
   @override
   State<_VisitForm> createState() => _VisitFormState();
@@ -638,14 +631,21 @@ class _VisitForm extends StatefulWidget {
 class _VisitFormState extends State<_VisitForm> {
   final _formKey = GlobalKey<FormState>();
   final _tglText = TextEditingController();
-  String? _toko;
+  late final List<TokoPilihan> _opsi;
+  int? _tokoId;
   DateTime? _tanggal;
 
   @override
   void initState() {
     super.initState();
     final v = widget.awal;
-    _toko = v?.tokoNama;
+    _opsi = [...widget.daftarToko];
+    // Customer yang sudah dihapus tetap muncul supaya jadwal lama bisa dibuka.
+    if (v?.customerId != null && !_opsi.any((t) => t.id == v!.customerId)) {
+      _opsi.add(TokoPilihan(id: v!.customerId!, nama: v.tokoNama));
+    }
+    _tokoId = v?.customerId ??
+        _opsi.where((t) => t.nama == v?.tokoNama).firstOrNull?.id;
     _tanggal = v?.tanggal;
     _isiTanggal();
   }
@@ -691,11 +691,17 @@ class _VisitFormState extends State<_VisitForm> {
     // Manager hanya mengatur toko dan tanggal. Jadwal baru berstatus
     // scheduled; status & catatan hasil kunjungan diisi oleh Sales.
     final awal = widget.awal;
+    final toko = _opsi.firstWhere((t) => t.id == _tokoId);
     final visit = awal != null
-        ? awal.copyWith(tokoNama: _toko!, tanggal: _tanggal!)
+        ? awal.copyWith(
+            customerId: toko.id,
+            tokoNama: toko.nama,
+            tanggal: _tanggal!,
+          )
         : Visit(
             id: DateTime.now().millisecondsSinceEpoch,
-            tokoNama: _toko!,
+            customerId: toko.id,
+            tokoNama: toko.nama,
             tanggal: _tanggal!,
           );
     Navigator.of(context).pop(_HasilForm.simpan(visit));
@@ -738,9 +744,9 @@ class _VisitFormState extends State<_VisitForm> {
                 ),
                 const SizedBox(height: 14),
                 _label('Store'),
-                DropdownButtonFormField<String>(
+                DropdownButtonFormField<int>(
                   // ignore: deprecated_member_use
-                  value: _toko,
+                  value: _tokoId,
                   isExpanded: true,
                   dropdownColor: _panel,
                   iconEnabledColor: Colors.white70,
@@ -750,13 +756,13 @@ class _VisitFormState extends State<_VisitForm> {
                   ),
                   decoration: _dekor(hint: 'Select store...'),
                   items: [
-                    for (final t in widget.daftarToko)
+                    for (final t in _opsi)
                       DropdownMenuItem(
-                        value: t,
-                        child: Text(t, overflow: TextOverflow.ellipsis),
+                        value: t.id,
+                        child: Text(t.nama, overflow: TextOverflow.ellipsis),
                       ),
                   ],
-                  onChanged: (v) => setState(() => _toko = v),
+                  onChanged: (v) => setState(() => _tokoId = v),
                   validator: (v) => v == null ? 'Store is required' : null,
                 ),
                 const SizedBox(height: 12),
