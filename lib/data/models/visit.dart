@@ -57,6 +57,7 @@ class Visit {
     required this.tokoNama,
     required this.tanggal,
     this.customerId,
+    this.alamat = '',
     this.status = VisitStatus.scheduled,
     this.catatan = '',
   });
@@ -67,6 +68,9 @@ class Visit {
 
   /// ID customer di server. Null untuk data dummy.
   final int? customerId;
+
+  /// Alamat toko (dari customers.address). Kosong untuk data dummy.
+  final String alamat;
   final VisitStatus status;
   final String catatan; // catatan hasil kunjungan (diisi Sales)
 
@@ -104,6 +108,9 @@ class Visit {
       tokoNama: (nama ?? '').toString(),
       tanggal: dateOnly(DateTime.parse(tanggal.toString())),
       customerId: idToko is num ? idToko.toInt() : null,
+      alamat: (toko is Map ? (toko['address'] ?? toko['alamat']) : null)
+              ?.toString() ??
+          '',
       status: VisitStatus.parse(json['status']),
       catatan: (json['notes'] ?? json['note'] ?? json['catatan'] ?? '')
           .toString(),
@@ -114,6 +121,7 @@ class Visit {
     String? tokoNama,
     DateTime? tanggal,
     int? customerId,
+    String? alamat,
     VisitStatus? status,
     String? catatan,
   }) =>
@@ -122,6 +130,7 @@ class Visit {
         tokoNama: tokoNama ?? this.tokoNama,
         tanggal: tanggal ?? this.tanggal,
         customerId: customerId ?? this.customerId,
+        alamat: alamat ?? this.alamat,
         status: status ?? this.status,
         catatan: catatan ?? this.catatan,
       );

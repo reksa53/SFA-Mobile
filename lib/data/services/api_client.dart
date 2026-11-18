@@ -9,6 +9,7 @@ class ApiClient {
 
   static const _tokenKey = 'token';
   static const _roleKey = 'role';
+  static const _nameKey = 'name';
   final _storage = const FlutterSecureStorage();
 
   late final Dio dio =
@@ -35,6 +36,7 @@ class ApiClient {
                   e.requestOptions.path != '/login') {
                 await _storage.delete(key: _tokenKey);
                 await _storage.delete(key: _roleKey);
+                await _storage.delete(key: _nameKey);
               }
               handler.next(e);
             },
@@ -45,6 +47,7 @@ class ApiClient {
       (await _storage.read(key: _tokenKey)) != null;
 
   Future<String?> getRole() => _storage.read(key: _roleKey);
+  Future<String?> getName() => _storage.read(key: _nameKey);
 
   /// Login, simpan token dan role, lalu kembalikan role ('manager' / 'sales').
   Future<String> login(String email, String password) async {
@@ -64,6 +67,10 @@ class ApiClient {
 
     await _storage.write(key: _tokenKey, value: token);
     await _storage.write(key: _roleKey, value: role);
+        final nama = res.data['data']?['name'];
+    if (nama is String && nama.isNotEmpty) {
+      await _storage.write(key: _nameKey, value: nama);
+    }
     return role;
   }
 
@@ -73,5 +80,6 @@ class ApiClient {
     } catch (_) {}
     await _storage.delete(key: _tokenKey);
     await _storage.delete(key: _roleKey);
+    await _storage.delete(key: _nameKey);
   }
 }

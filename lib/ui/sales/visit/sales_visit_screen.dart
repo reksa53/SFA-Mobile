@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../../data/services/api_client.dart';
 import '../../../data/models/visit.dart';
 import '../../../data/repositories/sales_visit_repository.dart';
 import '../../../utils/date_id.dart';
@@ -16,7 +17,7 @@ import 'visit_status_chip.dart';
 class SalesVisitScreen extends StatefulWidget {
   const SalesVisitScreen({
     super.key,
-    this.salesName = 'Icha Clowy',
+    this.salesName = 'Sales',
     this.repository = const ApiSalesVisitRepository(),
   });
 
@@ -35,6 +36,7 @@ class _SalesVisitScreenState extends State<SalesVisitScreen> {
   List<Visit> _visits = const [];
   bool _loading = true;
   bool _failed = false;
+    String? _nama;
 
   @override
   void initState() {
@@ -42,6 +44,9 @@ class _SalesVisitScreenState extends State<SalesVisitScreen> {
     final now = DateTime.now();
     _month = DateTime(now.year, now.month);
     _load();
+        ApiClient.instance.getName().then((n) {
+      if (mounted && n != null) setState(() => _nama = n);
+    });
   }
 
   Future<void> _load() async {
@@ -161,7 +166,7 @@ class _SalesVisitScreenState extends State<SalesVisitScreen> {
             Padding(
               padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
               child: Text(
-                'Hi, ${widget.salesName} · ${namaBulan(now.month)} ${now.year}',
+                'Hi, ${_nama ?? widget.salesName} · ${namaBulan(now.month)} ${now.year}',
                 style: GoogleFonts.poppins(
                   fontSize: 13,
                   color: Colors.white70,
