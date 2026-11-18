@@ -30,6 +30,7 @@ class ProductBatch {
 
 class Product {
   Product({
+    this.id, 
     required this.sku,
     required this.name,
     this.brand,
@@ -40,6 +41,7 @@ class Product {
     List<ProductBatch>? batches,
   }) : batches = batches ?? [];
 
+  final int? id;
   final String sku;
   final String name;
   final String? brand;
