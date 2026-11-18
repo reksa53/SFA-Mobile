@@ -17,7 +17,7 @@ class SalesVisitScreen extends StatefulWidget {
   const SalesVisitScreen({
     super.key,
     this.salesName = 'Icha Clowy',
-    this.repository = const DummySalesVisitRepository(),
+    this.repository = const ApiSalesVisitRepository(),
   });
 
   /// Nama Sales yang login (nanti ambil dari data login).

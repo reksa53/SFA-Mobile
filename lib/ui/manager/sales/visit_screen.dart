@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -18,7 +19,7 @@ class VisitScreen extends StatefulWidget {
   const VisitScreen({
     super.key,
     required this.sales,
-    this.repository = const DummySalesVisitRepository(),
+    this.repository = const ApiSalesVisitRepository(),
     this.onVisitsChanged,
   });
 
@@ -118,18 +119,66 @@ class _VisitScreenState extends State<VisitScreen> {
     return peta;
   }
 
+  void _pesan(String teks) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(teks)));
+  }
+
+  /// Pesan error dari server (422 / abort Laravel) kalau ada.
+  String _pesanError(Object e, String cadangan) {
+    if (e is DioException) {
+      final data = e.response?.data;
+      if (data is Map) {
+        final errors = data['errors'];
+        if (errors is Map && errors.isNotEmpty) {
+          final first = errors.values.first;
+          if (first is List && first.isNotEmpty) return first.first.toString();
+        }
+        final pesan = data['message'];
+        if (pesan is String && pesan.isNotEmpty) return pesan;
+      }
+      if (e.response == null) return 'Cannot reach the server';
+    }
+    return cadangan;
+  }
+
   Future<void> _onEdit() async {
+    // Daftar toko diambil dulu supaya dropdown di form berisi customer asli.
+    final List<TokoPilihan> toko;
+    try {
+      toko = await widget.repository.getTokoPilihan();
+    } catch (e) {
+      if (!mounted) return;
+      _pesan(_pesanError(e, 'Failed to load stores'));
+      return;
+    }
+    if (!mounted) return;
+
     final hasil = await Navigator.of(context).push<List<Visit>>(
       MaterialPageRoute(
-        builder: (_) => EditVisitScreen(sales: widget.sales, visits: _visits),
+        builder: (_) => EditVisitScreen(
+          sales: widget.sales,
+          visits: _visits,
+          toko: toko,
+        ),
       ),
     );
     if (hasil == null || !mounted) return;
-    setState(() => _visits = hasil);
-    widget.onVisitsChanged?.call(hasil);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Visit schedule saved')),
-    );
+
+    try {
+      final tersimpan = await widget.repository.saveVisits(
+        widget.sales.id,
+        _visits,
+        hasil,
+      );
+      if (!mounted) return;
+      setState(() => _visits = tersimpan);
+      widget.onVisitsChanged?.call(tersimpan);
+      _pesan('Visit schedule saved');
+    } catch (e) {
+      if (!mounted) return;
+      _pesan(_pesanError(e, 'Failed to save schedule'));
+      _load(); // sinkronkan lagi dengan isi server
+    }
   }
 
   @override
