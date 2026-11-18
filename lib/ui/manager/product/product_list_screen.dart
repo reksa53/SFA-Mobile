@@ -97,6 +97,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
         void upd(VoidCallback f) {
           setState(f);
           setSheet(() {});
+          
         }
 
         return SheetFrame(
@@ -107,6 +108,9 @@ class _ProductListScreenState extends State<ProductListScreen> {
             _cats.clear();
             _status = null;
           }),
+          
+          
+          
           child: Column(
             children: [
               SheetBox(
@@ -166,6 +170,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
         );
       },
     ),
+    maxHeightFactor: 0.7,
   );
 
   @override
@@ -280,6 +285,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
                         ),
                       ),
                     ),
+                    const SizedBox(width: 12),
                     GestureDetector(
                       onTap: _openFilter,
                       child: Row(
