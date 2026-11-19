@@ -80,9 +80,9 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
   }
 
   Future<void> _onAddStore() async {
-    final added = await Navigator.of(
-      context,
-    ).push<bool>(MaterialPageRoute(builder: (_) => const AddCustomerScreen()));
+    final added = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(builder: (_) => const AddCustomerScreen()),
+    );
     if (added == true) _load(); // ambil ulang dari server
   }
 
@@ -163,7 +163,8 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
           endIndent: 12,
           color: Color(0xFFE6E6E6),
         ),
-        itemBuilder: (_, i) => _StoreTile(store: stores[i]),
+        itemBuilder: (_, i) =>
+            _StoreTile(store: stores[i], onReturn: _load),
       ),
     );
   }
@@ -232,9 +233,12 @@ class _Header extends StatelessWidget {
 }
 
 class _StoreTile extends StatelessWidget {
-  const _StoreTile({required this.store});
+  const _StoreTile({required this.store, required this.onReturn});
 
   final CustomerStore store;
+
+  /// Dipanggil setelah kembali dari layar detail (data mungkin berubah).
+  final VoidCallback onReturn;
 
   static const _detailStyle = TextStyle(
     fontSize: 10,
@@ -246,10 +250,11 @@ class _StoreTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final photo = store.photoUrl;
     return InkWell(
-      onTap: () {
-        Navigator.of(context).push(
+      onTap: () async {
+        await Navigator.of(context).push(
           MaterialPageRoute(builder: (_) => CustomerDetailScreen(store: store)),
         );
+        onReturn();
       },
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),

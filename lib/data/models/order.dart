@@ -3,10 +3,10 @@ import 'package:sfa_mobile/data/models/order_item.dart';
 enum OrderStatus { pending, accepted, rejected }
 
 OrderStatus _parseStatus(String s) => switch (s) {
-      'accepted' => OrderStatus.accepted,
-      'rejected' => OrderStatus.rejected,
-      _ => OrderStatus.pending,
-    };
+  'accepted' => OrderStatus.accepted,
+  'rejected' => OrderStatus.rejected,
+  _ => OrderStatus.pending,
+};
 
 class Order {
   const Order({
@@ -16,18 +16,20 @@ class Order {
     this.invoice,
     this.salesId,
     this.customerId,
+    this.createdAt, // BARU
     this.items = const [],
   }) : assert(
-          (status == OrderStatus.accepted) == (invoice != null),
-          'Invoice harus ada tepat pada order accepted',
-        );
+         (status == OrderStatus.accepted) == (invoice != null),
+         'Invoice harus ada tepat pada order accepted',
+       );
 
   final int? id;
   final String storeName;
-  final String? invoice; // null selama masih pending
+  final String? invoice;
   final OrderStatus status;
   final int? salesId;
   final int? customerId;
+  final DateTime? createdAt; // BARU
   final List<OrderItem> items;
 
   int get total => items.fold(0, (sum, i) => sum + i.subtotal);
@@ -42,6 +44,9 @@ class Order {
       salesId: sales?['id'] as int?,
       status: _parseStatus(j['status'] as String? ?? 'pending'),
       invoice: j['order_number'] as String?,
+      createdAt: j['created_at'] == null
+          ? null
+          : DateTime.tryParse(j['created_at'].toString())?.toLocal(),
       items: (j['items'] as List? ?? [])
           .map((e) => OrderItem.fromJson(e as Map<String, dynamic>))
           .toList(),

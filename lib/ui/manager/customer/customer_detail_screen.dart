@@ -5,6 +5,8 @@ import 'package:sfa_mobile/data/models/customer_visit.dart';
 import 'package:sfa_mobile/data/models/sales.dart';
 import 'package:sfa_mobile/data/services/customer_service.dart';
 import 'package:sfa_mobile/data/services/sales_service.dart';
+import 'package:sfa_mobile/data/models/order.dart';
+import 'package:sfa_mobile/data/services/order_service.dart';
 
 import '../../core/theme/app_colors.dart';
 import 'customer_list_screen.dart';
@@ -27,6 +29,16 @@ const _months = [
 String _fmtLong(DateTime d) => '${d.day} ${_months[d.month - 1]} ${d.year}';
 String _fmtDate(DateTime d) => '${d.day} - ${_months[d.month - 1]} - ${d.year}';
 String _pad2(int n) => n.toString().padLeft(2, '0');
+String _rupiah(num v) {
+  final s = v.round().abs().toString();
+  final b = StringBuffer();
+  for (var i = 0; i < s.length; i++) {
+    if (i > 0 && (s.length - i) % 3 == 0) b.write('.');
+    b.write(s[i]);
+  }
+  return 'Rp $b';
+}
+
 DateTime _dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);
 bool _sameDay(DateTime a, DateTime b) =>
     a.year == b.year && a.month == b.month && a.day == b.day;
@@ -49,12 +61,6 @@ Color _statusColor(CustomerVisit v) => switch (v.status) {
     v.isOverdue ? _colorOverdue : _colorScheduled,
 };
 
-class _OrderHistory {
-  const _OrderHistory({required this.invoice, required this.date});
-  final String invoice;
-  final String date;
-}
-
 class CustomerDetailScreen extends StatefulWidget {
   const CustomerDetailScreen({super.key, required this.store});
 
@@ -67,15 +73,12 @@ class CustomerDetailScreen extends StatefulWidget {
 class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
   static const _background = Color(0xFF3A3A3A);
 
-  // Data dummy, ganti dengan data dari service (menunggu backend order).
-  static const _orders = [
-    _OrderHistory(invoice: 'INV. 0028-089.12.23.2029', date: '23 Oktober 2026'),
-    _OrderHistory(invoice: 'INV. 0028-089.12.23.2029', date: '23 Oktober 2026'),
-    _OrderHistory(invoice: 'INV. 0028-089.12.23.2029', date: '23 Oktober 2026'),
-    _OrderHistory(invoice: 'INV. 0028-089.12.23.2029', date: '23 Oktober 2026'),
-  ];
-
   final _service = CustomerService();
+  final _orderService = OrderService();
+  List<Order> _orders = const [];
+  bool _loadingOrders = true;
+  bool _ordersFailed = false;
+
   late CustomerStore _store = widget.store;
   List<CustomerVisit> _visits = const [];
   bool _loadingVisits = true;
@@ -89,6 +92,7 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
   void initState() {
     super.initState();
     _loadVisits();
+    _loadOrders(); // BARU
   }
 
   Future<void> _loadVisits() async {
@@ -131,6 +135,164 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
       // header tetap memakai data lama
     }
     await _loadVisits();
+  }
+
+  Future<void> _loadOrders() async {
+    final id = _store.id;
+    if (id == null) {
+      setState(() => _loadingOrders = false);
+      return;
+    }
+    setState(() {
+      _loadingOrders = true;
+      _ordersFailed = false;
+    });
+    try {
+      final res = await _orderService.fetch(
+        status: 'accepted',
+        customerId: id,
+        perPage: 50,
+      );
+      if (!mounted) return;
+      setState(() {
+        _orders = res.orders;
+        _loadingOrders = false;
+      });
+    } catch (e) {
+      debugPrint('LOAD ORDERS ERROR: $e');
+      if (e is DioException) {
+        debugPrint('status: ${e.response?.statusCode} | ${e.response?.data}');
+      }
+      if (!mounted) return;
+      setState(() {
+        _ordersFailed = true;
+        _loadingOrders = false;
+      });
+    }
+  }
+
+  Widget _buildOrders() {
+    const white = TextStyle(color: AppColors.white);
+    if (_loadingOrders) {
+      return const Center(
+        child: CircularProgressIndicator(color: AppColors.white),
+      );
+    }
+    if (_ordersFailed) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Gagal memuat history order', style: white),
+            TextButton(onPressed: _loadOrders, child: const Text('Coba lagi')),
+          ],
+        ),
+      );
+    }
+    if (_orders.isEmpty) {
+      return const Center(child: Text('Belum ada order', style: white));
+    }
+    return ListView.separated(
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      itemCount: _orders.length,
+      separatorBuilder: (_, _) => const SizedBox(height: 8),
+      itemBuilder: (_, i) => _OrderTile(
+        order: _orders[i],
+        onDetail: () => _showInvoice(_orders[i]),
+      ),
+    );
+  }
+
+  /// Popup invoice untuk satu order.
+  void _showInvoice(Order o) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.white,
+        title: Text(
+          o.invoice ?? 'Order #${o.id}',
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+        ),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                o.createdAt == null ? '-' : _fmtLong(o.createdAt!),
+                style: const TextStyle(fontSize: 12, color: Colors.black54),
+              ),
+              const Divider(height: 20),
+              Flexible(
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: o.items.length,
+                  separatorBuilder: (_, _) => const SizedBox(height: 8),
+                  itemBuilder: (_, i) {
+                    final it = o.items[i];
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                it.productName,
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              Text(
+                                '${it.quantity} x ${_rupiah(it.unitPrice)}',
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  color: Colors.black54,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Text(
+                          _rupiah(it.unitPrice * it.quantity),
+                          style: const TextStyle(fontSize: 13),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ),
+              const Divider(height: 20),
+              Row(
+                children: [
+                  const Expanded(
+                    child: Text(
+                      'Total',
+                      style: TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                  ),
+                  Text(
+                    _rupiah(o.total),
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Tutup'),
+          ),
+        ],
+      ),
+    );
   }
 
   /// Popup detail kunjungan pada tanggal yang diketuk.
@@ -212,14 +374,7 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
                   ),
                 ),
               ),
-              Expanded(
-                child: ListView.separated(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  itemCount: _orders.length,
-                  separatorBuilder: (_, _) => const SizedBox(height: 8),
-                  itemBuilder: (_, i) => _OrderTile(order: _orders[i]),
-                ),
-              ),
+              Expanded(child: _buildOrders()),
               Padding(
                 padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
                 child: Row(
@@ -382,6 +537,25 @@ class _InfoCard extends StatelessWidget {
                         Expanded(
                           child: Text(
                             'Sales: ${store.salesName ?? '-'}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                    // Hari kunjungan tetap.
+                    Row(
+                      children: [
+                        const Icon(Icons.event_repeat_outlined, size: 12),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            'Kunjungan: ${store.visitDayName ?? 'Tidak ada jadwal tetap'}',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
@@ -720,6 +894,7 @@ class _EditCustomerSheetState extends State<_EditCustomerSheet> {
   bool _salesLoading = true;
   bool _salesFailed = false;
   int? _salesId;
+  int? _visitDay;
 
   late final List<_VisitDraft> _drafts = [
     for (final v in widget.visits.where((v) => v.isScheduled))
@@ -732,6 +907,7 @@ class _EditCustomerSheetState extends State<_EditCustomerSheet> {
   void initState() {
     super.initState();
     _salesId = widget.store.salesId;
+    _visitDay = widget.store.visitDay;
     _loadSales();
   }
 
@@ -809,6 +985,8 @@ class _EditCustomerSheetState extends State<_EditCustomerSheet> {
 
     final id = widget.store.id!;
     final salesChanged = _salesId != widget.store.salesId;
+    // Sales dikosongkan: jadwal lama tetap atas nama sales lama.
+    final moveVisits = salesChanged && _salesId != null;
     final svc = CustomerService();
     var profileSaved = false;
 
@@ -816,7 +994,8 @@ class _EditCustomerSheetState extends State<_EditCustomerSheet> {
     try {
       await svc.update(
         id,
-        salesId: _salesId!,
+        salesId: _salesId,
+        visitDay: _visitDay,
         name: _nameCtrl.text.trim(),
         address: _addressCtrl.text.trim(),
         ownerName: _ownerCtrl.text.trim(),
@@ -830,17 +1009,17 @@ class _EditCustomerSheetState extends State<_EditCustomerSheet> {
         if (d.deleted) {
           if (o != null) await svc.deleteVisit(o.id);
         } else if (o == null) {
-          await svc.createVisit(
-            salesId: _salesId!,
-            customerId: id,
-            date: d.date,
-          );
-        } else if (d.dateChanged || salesChanged) {
+          // Jadwal baru butuh sales (tombol tambah nonaktif kalau sales kosong).
+          final s = _salesId;
+          if (s != null) {
+            await svc.createVisit(salesId: s, customerId: id, date: d.date);
+          }
+        } else if (d.dateChanged || moveVisits) {
           await svc.updateVisit(
             o.id,
             customerId: id,
             date: d.date,
-            salesId: salesChanged ? _salesId : null,
+            salesId: moveVisits ? _salesId : null,
           );
         }
       }
@@ -924,20 +1103,59 @@ class _EditCustomerSheetState extends State<_EditCustomerSheet> {
     }
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
-      child: DropdownButtonFormField<int>(
+      child: DropdownButtonFormField<int?>(
         initialValue: _salesId,
         isExpanded: true,
         style: const TextStyle(color: Colors.black87),
         dropdownColor: AppColors.white,
-        decoration: _decoration('Sales yang Menangani', required: true),
+        decoration: _decoration('Sales yang Menangani'),
         items: [
+          const DropdownMenuItem<int?>(
+            value: null,
+            child: Text('Belum ditentukan'),
+          ),
           for (final s in _sales)
-            DropdownMenuItem(value: s.id, child: Text(s.nama)),
+            DropdownMenuItem<int?>(value: s.id, child: Text(s.nama)),
         ],
         onChanged: (v) => setState(() => _salesId = v),
-        validator: (v) => v == null ? 'Pilih sales' : null,
+        validator: (v) => (_visitDay != null && v == null)
+            ? 'Pilih sales kalau hari kunjungan diisi'
+            : null,
       ),
     );
+  }
+
+  Widget _dayDropdown() {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: DropdownButtonFormField<int?>(
+        initialValue: _visitDay,
+        isExpanded: true,
+        style: const TextStyle(color: Colors.black87),
+        dropdownColor: AppColors.white,
+        decoration: _decoration('Hari Kunjungan Tetap'),
+        items: [
+          const DropdownMenuItem<int?>(
+            value: null,
+            child: Text('Tidak ada jadwal tetap'),
+          ),
+          for (final e in kVisitDayNames.entries)
+            DropdownMenuItem<int?>(value: e.key, child: Text(e.value)),
+        ],
+        onChanged: (v) => setState(() => _visitDay = v),
+      ),
+    );
+  }
+
+  String _visitInfo(bool salesChanged) {
+    if (_salesId == null) {
+      return widget.store.salesId == null
+          ? 'Pilih sales dulu untuk menambah jadwal baru.'
+          : 'Sales dikosongkan: jadwal yang sudah ada tetap atas nama sales lama.';
+    }
+    return salesChanged
+        ? 'Sales diganti: jadwal yang belum dilaporkan akan dipindah ke sales baru.'
+        : 'Hanya jadwal yang belum dilaporkan yang bisa diubah.';
   }
 
   Widget _visitSection() {
@@ -954,9 +1172,7 @@ class _EditCustomerSheetState extends State<_EditCustomerSheet> {
         ),
         const SizedBox(height: 2),
         Text(
-          salesChanged
-              ? 'Sales diganti: jadwal yang belum dilaporkan akan dipindah ke sales baru.'
-              : 'Hanya jadwal yang belum dilaporkan yang bisa diubah.',
+          _visitInfo(salesChanged),
           style: const TextStyle(fontSize: 11, color: Colors.black54),
         ),
         const SizedBox(height: 8),
@@ -1019,7 +1235,7 @@ class _EditCustomerSheetState extends State<_EditCustomerSheet> {
             ),
           ),
         TextButton.icon(
-          onPressed: _addDraft,
+          onPressed: _salesId == null ? null : _addDraft,
           icon: const Icon(Icons.add_circle_outline, size: 18),
           label: const Text('Tambah jadwal visit'),
           style: TextButton.styleFrom(foregroundColor: AppColors.red),
@@ -1094,6 +1310,7 @@ class _EditCustomerSheetState extends State<_EditCustomerSheet> {
                         keyboardType: TextInputType.multiline,
                       ),
                       _salesDropdown(),
+                      _dayDropdown(),
                       _field(
                         controller: _notesCtrl,
                         label: 'Catatan',
@@ -1160,15 +1377,17 @@ class _EditCustomerSheetState extends State<_EditCustomerSheet> {
   }
 }
 
-// ───────────────────────── History order (dummy) ─────────────────────────
+// ───────────────────────── History order ─────────────────────────
 
 class _OrderTile extends StatelessWidget {
-  const _OrderTile({required this.order});
+  const _OrderTile({required this.order, required this.onDetail});
 
-  final _OrderHistory order;
+  final Order order;
+  final VoidCallback onDetail;
 
   @override
   Widget build(BuildContext context) {
+    final date = order.createdAt;
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
       decoration: BoxDecoration(
@@ -1182,7 +1401,7 @@ class _OrderTile extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  order.invoice,
+                  order.invoice ?? 'Order #${order.id}',
                   style: const TextStyle(
                     color: AppColors.white,
                     fontSize: 15,
@@ -1191,7 +1410,7 @@ class _OrderTile extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  order.date,
+                  date == null ? '-' : _fmtLong(date),
                   style: const TextStyle(
                     color: AppColors.white,
                     fontSize: 12,
@@ -1206,9 +1425,7 @@ class _OrderTile extends StatelessWidget {
             borderRadius: BorderRadius.circular(16),
             child: InkWell(
               borderRadius: BorderRadius.circular(16),
-              onTap: () {
-                // TODO: navigasi ke detail order (menunggu backend order).
-              },
+              onTap: onDetail,
               child: const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 child: Row(

@@ -5,7 +5,12 @@ import '../models/order_item.dart';
 import 'api_client.dart';
 
 class OrderSummaryCount {
-  const OrderSummaryCount({required this.all, required this.pending, required this.accepted, required this.rejected});
+  const OrderSummaryCount({
+    required this.all,
+    required this.pending,
+    required this.accepted,
+    required this.rejected,
+  });
   final int all, pending, accepted, rejected;
 }
 
@@ -18,14 +23,27 @@ class OrderResult {
 class OrderService {
   final _dio = ApiClient.instance.dio;
 
-  Future<OrderResult> fetch({String? status, String? period, String? search}) async {
-    final res = await _dio.get('/orders', queryParameters: {
-      if (status != null) 'status': status,
-      if (period != null) 'period': period,
-      if (search != null && search.isNotEmpty) 'search': search,
-    });
+  Future<OrderResult> fetch({
+    String? status,
+    String? period,
+    String? search,
+    int? customerId,
+    int? perPage,
+  }) async {
+    final res = await _dio.get(
+      '/orders',
+      queryParameters: {
+        if (status != null) 'status': status,
+        if (period != null) 'period': period,
+        if (search != null && search.isNotEmpty) 'search': search,
+        if (customerId != null) 'customer_id': customerId,
+        if (perPage != null) 'per_page': perPage,
+      },
+    );
     final body = res.data as Map<String, dynamic>;
-    final orders = (body['data'] as List).map((e) => Order.fromJson(e as Map<String, dynamic>)).toList();
+    final orders = (body['data'] as List)
+        .map((e) => Order.fromJson(e as Map<String, dynamic>))
+        .toList();
     final s = body['summary'] as Map<String, dynamic>? ?? {};
     return OrderResult(
       orders,
@@ -38,11 +56,17 @@ class OrderService {
     );
   }
 
-  Future<Order> create({required int customerId, required List<OrderItem> items}) async {
-    final res = await _dio.post('/orders', data: {
-      'customer_id': customerId,
-      'items': items.map((i) => i.toJson()).toList(),
-    });
+  Future<Order> create({
+    required int customerId,
+    required List<OrderItem> items,
+  }) async {
+    final res = await _dio.post(
+      '/orders',
+      data: {
+        'customer_id': customerId,
+        'items': items.map((i) => i.toJson()).toList(),
+      },
+    );
     return Order.fromJson(res.data['data'] as Map<String, dynamic>);
   }
 
@@ -51,18 +75,26 @@ class OrderService {
   static String errorMessage(DioException e) {
     final status = e.response?.statusCode;
     final data = e.response?.data;
-    if (status == 422 && data is Map && data['message'] is String) return data['message'] as String;
+    if (status == 422 && data is Map && data['message'] is String)
+      return data['message'] as String;
     if (status == 422 && data is Map && data['errors'] is Map) {
       final first = (data['errors'] as Map).values.first;
       if (first is List && first.isNotEmpty) return first.first.toString();
     }
     switch (status) {
-      case 401: return 'Sesi habis, silakan login ulang';
-      case 403: return 'Kamu tidak punya akses';
-      case 404: return 'Order tidak ditemukan';
-      case 409: return (data is Map ? data['message'] as String? : null) ?? 'Order sudah diproses';
-      case null: return 'Tidak bisa terhubung ke server';
-      default: return 'Server error ($status)';
+      case 401:
+        return 'Sesi habis, silakan login ulang';
+      case 403:
+        return 'Kamu tidak punya akses';
+      case 404:
+        return 'Order tidak ditemukan';
+      case 409:
+        return (data is Map ? data['message'] as String? : null) ??
+            'Order sudah diproses';
+      case null:
+        return 'Tidak bisa terhubung ke server';
+      default:
+        return 'Server error ($status)';
     }
   }
 }
