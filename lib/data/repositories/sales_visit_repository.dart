@@ -106,7 +106,7 @@ class DummySalesVisitRepository implements SalesVisitRepository {
   @override
   Future<List<TokoPilihan>> getTokoPilihan() async => [
         for (var i = 0; i < _toko.length; i++)
-          TokoPilihan(id: i + 1, nama: _toko[i]),
+          TokoPilihan(id: i + 1, nama: _toko[i], salesId: (i % 3) + 1),
       ];
 
   @override
@@ -240,7 +240,13 @@ class ApiSalesVisitRepository implements SalesVisitRepository {
       for (final e in body['data'] as List) {
         final m = e as Map<String, dynamic>;
         hasil.add(
-          TokoPilihan(id: (m['id'] as num).toInt(), nama: m['name'].toString()),
+          TokoPilihan(
+            id: (m['id'] as num).toInt(),
+            nama: m['name'].toString(),
+            // Dua field ini diisi modul Customer; kalau belum ada, bernilai null.
+            salesId: (m['sales_id'] as num?)?.toInt(),
+            hariKunjungan: (m['visit_day'] as num?)?.toInt(),
+          ),
         );
       }
       terakhir = ((body['meta'] as Map?)?['last_page'] as num?)?.toInt() ?? 1;

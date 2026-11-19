@@ -64,7 +64,11 @@ class _EditVisitScreenState extends State<EditVisitScreen> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
       ),
-      builder: (_) => _VisitForm(awal: awal, daftarToko: widget.toko),
+      builder: (_) => _VisitForm(
+        awal: awal,
+        daftarToko: widget.toko,
+        salesId: widget.sales.id,
+      ),
     );
     if (hasil == null || !mounted) return;
 
@@ -618,11 +622,18 @@ InputDecoration _dekor({String? hint, Widget? suffix}) => InputDecoration(
     );
 
 class _VisitForm extends StatefulWidget {
-  const _VisitForm({required this.awal, required this.daftarToko});
+  const _VisitForm({
+    required this.awal,
+    required this.daftarToko,
+    required this.salesId,
+  });
 
   /// null = tambah kunjungan baru, ada isi = ubah kunjungan itu.
   final Visit? awal;
   final List<TokoPilihan> daftarToko;
+
+  /// Sales yang jadwalnya sedang diatur (tokonya ditampilkan lebih dulu).
+  final int salesId;
 
   @override
   State<_VisitForm> createState() => _VisitFormState();
@@ -633,6 +644,10 @@ class _VisitFormState extends State<_VisitForm> {
   final _tglText = TextEditingController();
   late final List<TokoPilihan> _opsi;
   int? _tokoId;
+
+  // Nilai penanda untuk judul grup di dropdown (bukan toko sungguhan).
+  static const _judulSaya = -1;
+  static const _judulLain = -2;
   DateTime? _tanggal;
 
   @override
@@ -646,6 +661,16 @@ class _VisitFormState extends State<_VisitForm> {
     }
     _tokoId = v?.customerId ??
         _opsi.where((t) => t.nama == v?.tokoNama).firstOrNull?.id;
+    // Toko milik sales ini dulu, lalu toko lain. Kalau belum ada toko yang
+    // diatur ke sales ini, daftar tetap satu grup seperti sebelumnya.
+    final milik = _opsi.where((t) => t.salesId == widget.salesId).toList();
+    if (milik.isNotEmpty) {
+      final lain = _opsi.where((t) => t.salesId != widget.salesId).toList();
+      _opsi
+        ..clear()
+        ..addAll(milik)
+        ..addAll(lain);
+    }
     _tanggal = v?.tanggal;
     _isiTanggal();
   }
@@ -654,6 +679,37 @@ class _VisitFormState extends State<_VisitForm> {
   void dispose() {
     _tglText.dispose();
     super.dispose();
+  }
+
+  /// Item dropdown: "Stores of this sales" lalu "Other stores".
+  List<DropdownMenuItem<int>> _itemToko() {
+    final milik = _opsi.where((t) => t.salesId == widget.salesId).toList();
+    DropdownMenuItem<int> toko(TokoPilihan t) => DropdownMenuItem(
+          value: t.id,
+          child: Text(t.nama, overflow: TextOverflow.ellipsis),
+        );
+    DropdownMenuItem<int> judul(int nilai, String teks) => DropdownMenuItem(
+          value: nilai,
+          enabled: false,
+          child: Text(
+            teks.toUpperCase(),
+            style: GoogleFonts.poppins(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.7,
+              color: Colors.white54,
+            ),
+          ),
+        );
+
+    if (milik.isEmpty) return [for (final t in _opsi) toko(t)];
+    final lain = _opsi.where((t) => t.salesId != widget.salesId).toList();
+    return [
+      judul(_judulSaya, 'Stores of this sales'),
+      for (final t in milik) toko(t),
+      if (lain.isNotEmpty) judul(_judulLain, 'Other stores'),
+      for (final t in lain) toko(t),
+    ];
   }
 
   void _isiTanggal() {
@@ -755,11 +811,14 @@ class _VisitFormState extends State<_VisitForm> {
                     color: AppColors.white,
                   ),
                   decoration: _dekor(hint: 'Select store...'),
-                  items: [
-                    for (final t in _opsi)
-                      DropdownMenuItem(
-                        value: t.id,
-                        child: Text(t.nama, overflow: TextOverflow.ellipsis),
+                  items: _itemToko(),
+                  selectedItemBuilder: (_) => [
+                    for (final i in _itemToko())
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: i.value != null && i.value! < 0
+                            ? const SizedBox.shrink()
+                            : i.child,
                       ),
                   ],
                   onChanged: (v) => setState(() => _tokoId = v),

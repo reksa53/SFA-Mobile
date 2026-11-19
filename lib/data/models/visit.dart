@@ -45,10 +45,21 @@ enum VisitTampilan {
 
 /// Satu pilihan toko di form Edit Visit (diambil dari tabel customers).
 class TokoPilihan {
-  const TokoPilihan({required this.id, required this.nama});
+  const TokoPilihan({
+    required this.id,
+    required this.nama,
+    this.salesId,
+    this.hariKunjungan,
+  });
 
   final int id;
   final String nama;
+
+  /// Sales penanggung jawab toko (customers.sales_id). Null = belum diatur.
+  final int? salesId;
+
+  /// Hari kunjungan tetap, 1 = Senin ... 5 = Jumat (customers.visit_day).
+  final int? hariKunjungan;
 }
 
 class Visit {
