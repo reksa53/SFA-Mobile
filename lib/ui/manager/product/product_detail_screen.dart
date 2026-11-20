@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:dio/dio.dart';
 
 import '../../../data/models/product.dart';
 import '../../../data/services/product_service.dart';
@@ -6,17 +7,28 @@ import '/utils/format.dart';
 import '../../core/theme/app_colors.dart';
 import '/ui/core/widgets/common.dart';
 
-class ProductDetailScreen extends StatelessWidget {
+class ProductDetailScreen extends StatefulWidget {
   const ProductDetailScreen({super.key, required this.product, this.canEdit = true});
 
   final Product product;
   final bool canEdit;
 
   @override
+  State<ProductDetailScreen> createState() => _ProductDetailScreenState();
+}
+
+class _ProductDetailScreenState extends State<ProductDetailScreen> {
+  @override
+  void initState() {
+    super.initState();
+    ProductService.instance.loadDetail(widget.product); // ambil batch dari server
+  }
+
+  @override
   Widget build(BuildContext context) => ListenableBuilder(
         listenable: ProductService.instance,
         builder: (context, _) {
-          final p = product;
+          final p = ProductService.instance.current(widget.product);
           final batches = p.fefo;
           final first = batches.indexWhere((b) => !b.expired && b.qty > 0); // "Keluar dulu"
 
@@ -107,7 +119,7 @@ class ProductDetailScreen extends StatelessWidget {
                       ),
                     ),
                   ),
-                  if (canEdit) ...[
+                  if (widget.canEdit) ...[
                     const SizedBox(height: 16),
                     PillButton('Tambah Batch', onPressed: () => _showAddBatch(context, p)),
                   ],
@@ -203,15 +215,22 @@ class _AddBatchState extends State<_AddBatch> {
     super.dispose();
   }
 
-  void _save() {
-    if (!_key.currentState!.validate()) return;
-    final q = int.parse(_qty.text);
-    ProductService.instance.addBatch(
+  Future<void> _save() async {
+  if (!_key.currentState!.validate()) return;
+  final q = int.parse(_qty.text);
+  try {
+    await ProductService.instance.addBatch(
       widget.product,
       ProductBatch(number: _no.text.trim(), expiry: _expiry, initialQty: q, qty: q, receivedAt: _received),
     );
-    Navigator.pop(context);
+    if (mounted) Navigator.pop(context);
+  } on DioException catch (e) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(e.response?.statusCode == 422 ? 'Nomor batch sudah ada' : 'Gagal menyimpan batch'),
+    ));
   }
+}
 
   @override
   Widget build(BuildContext context) => SheetFrame(

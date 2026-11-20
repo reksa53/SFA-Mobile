@@ -25,7 +25,7 @@ class _SalesOrderListScreenState extends State<SalesOrderListScreen> {
   bool _loading = true;
   String? _error;
   List<Order> _orders = const [];
-  OrderSummaryCount _summary = const OrderSummaryCount(all: 0, pending: 0, accepted: 0, rejected: 0);
+   OrderSummaryCount _summary = OrderSummaryCount.zero;
 
   @override
   void initState() {
@@ -47,7 +47,8 @@ class _SalesOrderListScreenState extends State<SalesOrderListScreen> {
         _loading = false;
       });
     } on DioException catch (e) {
-      if (mounted) setState(() {
+      if (!mounted) return;
+      setState(()  {
         _error = OrderService.errorMessage(e);
         _loading = false;
       });
