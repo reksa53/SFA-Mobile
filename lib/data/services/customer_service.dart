@@ -134,6 +134,10 @@ class CustomerService {
     await _dio.delete('/visits/$id');
   }
 
+  Future<void> delete(int id) async {
+    await _dio.delete('/customers/$id');
+  }
+
   /// Ambil pesan error dari response Laravel.
   static String errorMessage(DioException e) {
     final status = e.response?.statusCode;

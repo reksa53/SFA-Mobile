@@ -26,6 +26,21 @@ const _months = [
   'Desember',
 ];
 
+const _monthsEn = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+];
+
 String _fmtLong(DateTime d) => '${d.day} ${_months[d.month - 1]} ${d.year}';
 String _fmtDate(DateTime d) => '${d.day} - ${_months[d.month - 1]} - ${d.year}';
 String _pad2(int n) => n.toString().padLeft(2, '0');
@@ -61,6 +76,44 @@ Color _statusColor(CustomerVisit v) => switch (v.status) {
     v.isOverdue ? _colorOverdue : _colorScheduled,
 };
 
+const _cardBg = Color(0xFF4A4A4A);
+
+BoxDecoration _cardDeco(double radius) => BoxDecoration(
+  color: _cardBg,
+  borderRadius: BorderRadius.circular(radius),
+  border: Border.all(color: const Color(0x1FFFFFFF)),
+);
+
+/// Tombol kotak kecil (back & panah kalender).
+class _SquareButton extends StatelessWidget {
+  const _SquareButton({
+    required this.icon,
+    required this.onTap,
+    this.size = 38,
+  });
+
+  final IconData icon;
+  final VoidCallback onTap;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: const Color(0xFF5A5A5A),
+      borderRadius: BorderRadius.circular(10),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(10),
+        onTap: onTap,
+        child: SizedBox(
+          width: size,
+          height: size,
+          child: Icon(icon, color: Colors.white, size: 22),
+        ),
+      ),
+    );
+  }
+}
+
 class CustomerDetailScreen extends StatefulWidget {
   const CustomerDetailScreen({super.key, required this.store});
 
@@ -92,7 +145,7 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
   void initState() {
     super.initState();
     _loadVisits();
-    _loadOrders(); // BARU
+    _loadOrders();
   }
 
   Future<void> _loadVisits() async {
@@ -171,36 +224,51 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
     }
   }
 
-  Widget _buildOrders() {
+  List<Widget> _orderWidgets() {
     const white = TextStyle(color: AppColors.white);
     if (_loadingOrders) {
-      return const Center(
-        child: CircularProgressIndicator(color: AppColors.white),
-      );
+      return const [
+        Padding(
+          padding: EdgeInsets.all(24),
+          child: Center(
+            child: CircularProgressIndicator(color: AppColors.white),
+          ),
+        ),
+      ];
     }
     if (_ordersFailed) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('Gagal memuat history order', style: white),
-            TextButton(onPressed: _loadOrders, child: const Text('Coba lagi')),
-          ],
+      return [
+        Padding(
+          padding: const EdgeInsets.all(16),
+          child: Center(
+            child: Column(
+              children: [
+                const Text('Gagal memuat history order', style: white),
+                TextButton(
+                  onPressed: _loadOrders,
+                  child: const Text('Coba lagi'),
+                ),
+              ],
+            ),
+          ),
         ),
-      );
+      ];
     }
     if (_orders.isEmpty) {
-      return const Center(child: Text('Belum ada order', style: white));
+      return const [
+        Padding(
+          padding: EdgeInsets.all(24),
+          child: Center(child: Text('Belum ada order', style: white)),
+        ),
+      ];
     }
-    return ListView.separated(
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      itemCount: _orders.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 8),
-      itemBuilder: (_, i) => _OrderTile(
-        order: _orders[i],
-        onDetail: () => _showInvoice(_orders[i]),
-      ),
-    );
+    return [
+      for (final o in _orders)
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: _OrderTile(order: o, onDetail: () => _showInvoice(o)),
+        ),
+    ];
   }
 
   /// Popup invoice untuk satu order.
@@ -209,6 +277,8 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.white,
+        titleTextStyle: const TextStyle(color: Colors.black87),
+        contentTextStyle: const TextStyle(color: Colors.black87),
         title: Text(
           o.invoice ?? 'Order #${o.id}',
           style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
@@ -301,6 +371,8 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.white,
+        titleTextStyle: const TextStyle(color: Colors.black87),
+        contentTextStyle: const TextStyle(color: Colors.black87),
         title: Text(
           _fmtLong(day),
           style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
@@ -324,7 +396,7 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
 
   Future<void> _openEdit() async {
     if (_store.id == null) return;
-    await showModalBottomSheet<bool>(
+    final result = await showModalBottomSheet<String>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
@@ -335,6 +407,12 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
       builder: (_) => _EditCustomerSheet(store: _store, visits: _visits),
     );
     if (!mounted) return;
+
+    if (result == 'deleted') {
+      Navigator.of(context).pop(true); // keluar dari detail, list reload
+      return;
+    }
+
     // Apa pun hasilnya (berhasil / sebagian gagal), ambil ulang dari server.
     _changed = true;
     await _refresh();
@@ -353,73 +431,82 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
           child: Column(
             children: [
               Padding(
-                padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
-                child: _InfoCard(
-                  store: _store,
-                  visits: _visits,
-                  loading: _loadingVisits,
-                  failed: _visitsFailed,
-                  onRetry: _loadVisits,
-                  onDayTap: _showDay,
-                ),
-              ),
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 16),
-                child: Text(
-                  'History Order',
-                  style: TextStyle(
-                    color: AppColors.white,
-                    fontSize: 24,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
-              Expanded(child: _buildOrders()),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
                 child: Row(
                   children: [
-                    TextButton.icon(
-                      onPressed: () => Navigator.of(context).maybePop(),
-                      icon: const Icon(
-                        Icons.chevron_left,
-                        color: AppColors.white,
-                        size: 22,
-                      ),
-                      label: const Text(
-                        'back',
-                        style: TextStyle(
-                          color: AppColors.white,
-                          fontSize: 20,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
+                    _SquareButton(
+                      icon: Icons.chevron_left,
+                      size: 42,
+                      onTap: () => Navigator.of(context).maybePop(),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Material(
-                        color: const Color(0xFF5C1414),
-                        borderRadius: BorderRadius.circular(8),
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(8),
-                          onTap: _openEdit,
-                          child: const SizedBox(
-                            height: 40,
-                            child: Center(
-                              child: Text(
-                                'EDIT',
-                                style: TextStyle(
-                                  color: AppColors.white,
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
+                    const SizedBox(width: 16),
+                    const Text(
+                      'Customer',
+                      style: TextStyle(
+                        color: AppColors.white,
+                        fontSize: 28,
+                        fontWeight: FontWeight.w800,
                       ),
                     ),
                   ],
+                ),
+              ),
+              Expanded(
+                child: RefreshIndicator(
+                  onRefresh: () async {
+                    await _refresh();
+                    await _loadOrders();
+                  },
+                  child: ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                    children: [
+                      _InfoCard(store: _store),
+                      const SizedBox(height: 12),
+                      _StatsRow(visits: _visits),
+                      const SizedBox(height: 12),
+                      _CalendarCard(
+                        visits: _visits,
+                        loading: _loadingVisits,
+                        failed: _visitsFailed,
+                        onRetry: _loadVisits,
+                        onDayTap: _showDay,
+                      ),
+                      const SizedBox(height: 22),
+                      const Text(
+                        'History Order',
+                        style: TextStyle(
+                          color: AppColors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      ..._orderWidgets(),
+                    ],
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+                child: SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: FilledButton.icon(
+                    onPressed: _openEdit,
+                    icon: const Icon(Icons.edit_outlined, size: 18),
+                    label: const Text(
+                      'Edit Customer',
+                      style: TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.red,
+                      foregroundColor: AppColors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -430,53 +517,80 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
   }
 }
 
-// ───────────────────────── Kartu info + kalender ─────────────────────────
+// ───────────────────────── Kartu info ─────────────────────────
 
 class _InfoCard extends StatelessWidget {
-  const _InfoCard({
-    required this.store,
-    required this.visits,
-    required this.loading,
-    required this.failed,
-    required this.onRetry,
-    required this.onDayTap,
-  });
+  const _InfoCard({required this.store});
 
   final CustomerStore store;
-  final List<CustomerVisit> visits;
-  final bool loading;
-  final bool failed;
-  final VoidCallback onRetry;
-  final void Function(DateTime day, List<CustomerVisit> visits) onDayTap;
 
-  static const _cardColor = Color(0xFFD6D6D6);
-  static const _panelColor = Color(0xFFBDBDBD);
+  Widget _meta(IconData icon, String text, {int maxLines = 1}) => Padding(
+    padding: const EdgeInsets.only(top: 4),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 14, color: Colors.white54),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Text(
+            text,
+            maxLines: maxLines,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 12, color: Colors.white70),
+          ),
+        ),
+      ],
+    ),
+  );
+
+  Widget _chip(IconData icon, String text) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+    decoration: BoxDecoration(
+      color: const Color(0x14FFFFFF),
+      borderRadius: BorderRadius.circular(20),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 14, color: Colors.white),
+        const SizedBox(width: 6),
+        Text(
+          text,
+          style: const TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+            color: Colors.white,
+          ),
+        ),
+      ],
+    ),
+  );
 
   @override
   Widget build(BuildContext context) {
     final photo = store.photoUrl;
+    final owner = store.ownerName.isEmpty ? '-' : store.ownerName;
 
     return Container(
-      padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(
-        color: _cardColor,
-        borderRadius: BorderRadius.circular(12),
-      ),
+      padding: const EdgeInsets.all(14),
+      decoration: _cardDeco(20),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               ClipRRect(
-                borderRadius: BorderRadius.circular(4),
+                borderRadius: BorderRadius.circular(14),
                 child: Container(
-                  width: 56,
-                  height: 56,
-                  color: AppColors.white,
+                  width: 64,
+                  height: 64,
+                  color: const Color(0xFFF3F3F3),
                   child: (photo == null || photo.isEmpty)
                       ? const Icon(
                           Icons.storefront_outlined,
                           color: Colors.black38,
+                          size: 28,
                         )
                       : Image.network(
                           photo,
@@ -484,126 +598,217 @@ class _InfoCard extends StatelessWidget {
                           errorBuilder: (_, _, _) => const Icon(
                             Icons.storefront_outlined,
                             color: Colors.black38,
+                            size: 28,
                           ),
                         ),
                 ),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       store.storeName,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w800,
-                        color: Colors.black,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            store.ownerName.isEmpty ? '-' : store.ownerName,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(fontSize: 10),
-                          ),
-                        ),
-                        if (store.phone.isNotEmpty)
-                          Text(
-                            store.phone,
-                            style: const TextStyle(fontSize: 10),
-                          ),
-                      ],
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      store.address,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 10),
+                      style: const TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                      ),
                     ),
-                    const SizedBox(height: 4),
-                    // Sales yang menangani customer ini.
-                    Row(
-                      children: [
-                        const Icon(Icons.badge_outlined, size: 12),
-                        const SizedBox(width: 4),
-                        Expanded(
-                          child: Text(
-                            'Sales: ${store.salesName ?? '-'}',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 2),
-                    // Hari kunjungan tetap.
-                    Row(
-                      children: [
-                        const Icon(Icons.event_repeat_outlined, size: 12),
-                        const SizedBox(width: 4),
-                        Expanded(
-                          child: Text(
-                            'Kunjungan: ${store.visitDayName ?? 'Tidak ada jadwal tetap'}',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                      ],
+                    _meta(Icons.person_outline, owner),
+                    if (store.phone.isNotEmpty)
+                      _meta(Icons.phone_outlined, store.phone),
+                    _meta(
+                      Icons.location_on_outlined,
+                      store.address,
+                      maxLines: 2,
                     ),
                   ],
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
-          Container(
-            height: 262,
-            width: double.infinity,
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: _panelColor,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: loading
-                ? const Center(
-                    child: CircularProgressIndicator(color: AppColors.red),
-                  )
-                : failed
-                ? Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Text(
-                          'Gagal memuat jadwal visit',
-                          style: TextStyle(fontSize: 12),
-                        ),
-                        TextButton(
-                          onPressed: onRetry,
-                          child: const Text('Coba lagi'),
-                        ),
-                      ],
-                    ),
-                  )
-                : _MiniCalendar(visits: visits, onDayTap: onDayTap),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _chip(Icons.badge_outlined, 'Sales: ${store.salesName ?? '-'}'),
+              _chip(
+                Icons.event_repeat_outlined,
+                store.visitDayName ?? 'Tidak ada jadwal tetap',
+              ),
+            ],
           ),
         ],
       ),
+    );
+  }
+}
+
+// ───────────────────────── Statistik ─────────────────────────
+
+class _StatsRow extends StatelessWidget {
+  const _StatsRow({required this.visits});
+
+  final List<CustomerVisit> visits;
+
+  @override
+  Widget build(BuildContext context) {
+    final done = visits
+        .where((v) => v.status == CustomerVisitStatus.visited)
+        .length;
+    final missed = visits
+        .where((v) => v.status == CustomerVisitStatus.notVisited)
+        .length;
+    final overdue = visits.where((v) => v.isScheduled && v.isOverdue).length;
+    final pending = visits.where((v) => v.isScheduled && !v.isOverdue).length;
+
+    return Row(
+      children: [
+        Expanded(
+          child: _StatCard(
+            count: done,
+            label: 'Done',
+            color: const Color(0xFF2ECC40),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _StatCard(
+            count: pending,
+            label: 'Pending',
+            color: Colors.white,
+            hollow: true,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _StatCard(
+            count: overdue,
+            label: 'Overdue',
+            color: const Color(0xFFE53935),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _StatCard(
+            count: missed,
+            label: 'Missed',
+            color: const Color(0xFF9E9E9E),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _StatCard extends StatelessWidget {
+  const _StatCard({
+    required this.count,
+    required this.label,
+    required this.color,
+    this.hollow = false,
+  });
+
+  final int count;
+  final String label;
+  final Color color;
+  final bool hollow;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      decoration: _cardDeco(16),
+      child: Column(
+        children: [
+          Text(
+            '$count',
+            style: const TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 7,
+                height: 7,
+                decoration: BoxDecoration(
+                  color: hollow ? null : color,
+                  shape: BoxShape.circle,
+                  border: hollow ? Border.all(color: color, width: 1.5) : null,
+                ),
+              ),
+              const SizedBox(width: 4),
+              Text(
+                label,
+                style: const TextStyle(fontSize: 11, color: Colors.white70),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ───────────────────────── Kalender ─────────────────────────
+
+class _CalendarCard extends StatelessWidget {
+  const _CalendarCard({
+    required this.visits,
+    required this.loading,
+    required this.failed,
+    required this.onRetry,
+    required this.onDayTap,
+  });
+
+  final List<CustomerVisit> visits;
+  final bool loading;
+  final bool failed;
+  final VoidCallback onRetry;
+  final void Function(DateTime day, List<CustomerVisit> visits) onDayTap;
+
+  @override
+  Widget build(BuildContext context) {
+    Widget child;
+    if (loading) {
+      child = const SizedBox(
+        height: 200,
+        child: Center(child: CircularProgressIndicator(color: AppColors.white)),
+      );
+    } else if (failed) {
+      child = SizedBox(
+        height: 200,
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Gagal memuat jadwal visit',
+                style: TextStyle(color: Colors.white70),
+              ),
+              TextButton(onPressed: onRetry, child: const Text('Coba lagi')),
+            ],
+          ),
+        ),
+      );
+    } else {
+      child = _MiniCalendar(visits: visits, onDayTap: onDayTap);
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: _cardDeco(20),
+      child: child,
     );
   }
 }
@@ -619,7 +824,7 @@ class _MiniCalendar extends StatefulWidget {
 }
 
 class _MiniCalendarState extends State<_MiniCalendar> {
-  static const _weekdays = ['S', 'S', 'R', 'K', 'J', 'S', 'M'];
+  static const _weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   late DateTime _month = DateTime(DateTime.now().year, DateTime.now().month);
 
   void _shift(int delta) {
@@ -634,7 +839,7 @@ class _MiniCalendarState extends State<_MiniCalendar> {
     }
 
     final first = DateTime(_month.year, _month.month, 1);
-    final offset = first.weekday - 1; // Senin = 0
+    final offset = first.weekday % 7; // Minggu = 0
     final daysInMonth = DateTime(_month.year, _month.month + 1, 0).day;
     final rows = ((offset + daysInMonth) / 7).ceil();
     final start = first.subtract(Duration(days: offset));
@@ -642,37 +847,42 @@ class _MiniCalendarState extends State<_MiniCalendar> {
     return Column(
       children: [
         Row(
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            _ArrowButton(icon: Icons.chevron_left, onTap: () => _shift(-1)),
+            _SquareButton(icon: Icons.chevron_left, onTap: () => _shift(-1)),
             Text(
-              '${_months[_month.month - 1]} ${_month.year}',
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+              '${_monthsEn[_month.month - 1]} ${_month.year}',
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
+                color: Colors.white,
+              ),
             ),
-            _ArrowButton(icon: Icons.chevron_right, onTap: () => _shift(1)),
+            _SquareButton(icon: Icons.chevron_right, onTap: () => _shift(1)),
           ],
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 14),
         Row(
           children: [
-            for (var i = 0; i < 7; i++)
+            for (final w in _weekdays)
               Expanded(
                 child: Center(
                   child: Text(
-                    _weekdays[i],
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      color: i == 6 ? AppColors.red : Colors.black,
+                    w,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white54,
                     ),
                   ),
                 ),
               ),
           ],
         ),
-        const SizedBox(height: 2),
+        const SizedBox(height: 6),
         for (var r = 0; r < rows; r++)
-          Expanded(
+          SizedBox(
+            height: 46,
             child: Row(
               children: [
                 for (var c = 0; c < 7; c++)
@@ -685,19 +895,25 @@ class _MiniCalendarState extends State<_MiniCalendar> {
               ],
             ),
           ),
-        const SizedBox(height: 4),
-        const Wrap(
-          alignment: WrapAlignment.center,
-          spacing: 10,
-          runSpacing: 2,
-          children: [
-            _LegendDot(color: _colorScheduled, label: 'Terjadwal'),
-            _LegendDot(color: _colorOverdue, label: 'Terlewat'),
-            _LegendDot(color: _colorVisited, label: 'Dikunjungi'),
-            _LegendDot(color: _colorNotVisited, label: 'Tidak dikunjungi'),
-          ],
-        ),
       ],
+    );
+  }
+
+  Widget _dot(CustomerVisit v) {
+    final (color, hollow) = switch (v.status) {
+      CustomerVisitStatus.visited => (const Color(0xFF2ECC40), false),
+      CustomerVisitStatus.notVisited => (const Color(0xFF9E9E9E), false),
+      CustomerVisitStatus.scheduled =>
+        v.isOverdue ? (const Color(0xFFE53935), false) : (Colors.white, true),
+    };
+    return Container(
+      width: 6,
+      height: 6,
+      decoration: BoxDecoration(
+        color: hollow ? null : color,
+        shape: BoxShape.circle,
+        border: hollow ? Border.all(color: color, width: 1.2) : null,
+      ),
     );
   }
 
@@ -706,75 +922,35 @@ class _MiniCalendarState extends State<_MiniCalendar> {
     final list = byDay[key];
     final inMonth = d.month == _month.month;
     final isToday = _sameDay(d, DateTime.now());
-    final color = list == null ? null : _statusColor(list.first);
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: list == null ? null : () => widget.onDayTap(key, list),
-      child: Center(
-        child: Container(
-          width: 22,
-          height: 22,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: color,
-            shape: BoxShape.circle,
-            border: (isToday && color == null)
-                ? Border.all(color: Colors.black54)
-                : null,
-          ),
-          child: Text(
-            '${d.day}',
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: color != null ? FontWeight.w700 : FontWeight.w500,
-              color: color != null
-                  ? Colors.white
-                  : (inMonth ? Colors.black : Colors.black45),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 32,
+            height: 32,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: isToday
+                  ? Border.all(color: Colors.white, width: 1.5)
+                  : null,
+            ),
+            child: Text(
+              '${d.day}',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: inMonth ? Colors.white : Colors.white30,
+              ),
             ),
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _LegendDot extends StatelessWidget {
-  const _LegendDot({required this.color, required this.label});
-
-  final Color color;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 7,
-          height: 7,
-          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-        ),
-        const SizedBox(width: 3),
-        Text(label, style: const TextStyle(fontSize: 8.5)),
-      ],
-    );
-  }
-}
-
-class _ArrowButton extends StatelessWidget {
-  const _ArrowButton({required this.icon, required this.onTap});
-
-  final IconData icon;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-        child: Icon(icon, size: 18),
+          const SizedBox(height: 2),
+          SizedBox(height: 6, child: list == null ? null : _dot(list.first)),
+        ],
       ),
     );
   }
@@ -1025,10 +1201,56 @@ class _EditCustomerSheetState extends State<_EditCustomerSheet> {
       }
 
       if (!mounted) return;
-      Navigator.of(context).pop(true);
+      Navigator.of(context).pop('saved');
     } on DioException catch (e) {
       final extra = profileSaved ? ' (profil sudah tersimpan)' : '';
       _msg('${CustomerService.errorMessage(e)}$extra');
+    } catch (_) {
+      _msg('Terjadi kesalahan, coba lagi');
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  Future<void> _delete() async {
+    if (_saving) return;
+
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.white,
+        titleTextStyle: const TextStyle(color: Colors.black87),
+        contentTextStyle: const TextStyle(color: Colors.black87),
+        title: const Text(
+          'Hapus customer?',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+        ),
+        content: Text(
+          '"${widget.store.storeName}" akan dihapus beserta jadwal visitnya. '
+          'Tindakan ini tidak bisa dibatalkan.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Batal'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(foregroundColor: AppColors.red),
+            child: const Text('Hapus'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+
+    setState(() => _saving = true);
+    try {
+      await CustomerService().delete(widget.store.id!);
+      if (!mounted) return;
+      Navigator.of(context).pop('deleted');
+    } on DioException catch (e) {
+      _msg(CustomerService.errorMessage(e));
     } catch (_) {
       _msg('Terjadi kesalahan, coba lagi');
     } finally {
@@ -1216,11 +1438,13 @@ class _EditCustomerSheetState extends State<_EditCustomerSheet> {
                     ),
                   ),
                 IconButton(
+                  color: Colors.black54,
                   tooltip: 'Ubah tanggal',
                   icon: const Icon(Icons.edit_calendar_outlined, size: 20),
                   onPressed: () => _pickDate(d),
                 ),
                 IconButton(
+                  color: Colors.black54,
                   tooltip: 'Hapus jadwal',
                   icon: const Icon(Icons.delete_outline, size: 20),
                   onPressed: () => setState(() {
@@ -1246,131 +1470,148 @@ class _EditCustomerSheetState extends State<_EditCustomerSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom,
-      ),
-      child: ConstrainedBox(
-        constraints: BoxConstraints(
-          maxHeight: MediaQuery.of(context).size.height * 0.92,
+    return DefaultTextStyle.merge(
+      style: const TextStyle(color: Colors.black87),
+      child: Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom,
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const SizedBox(height: 10),
-            Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Colors.black26,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const Padding(
-              padding: EdgeInsets.fromLTRB(20, 14, 20, 8),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  'Edit Customer',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.92,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 10),
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.black26,
+                  borderRadius: BorderRadius.circular(2),
                 ),
               ),
-            ),
-            Flexible(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _field(
-                        controller: _nameCtrl,
-                        label: 'Nama Toko',
-                        required: true,
-                        maxLength: 150,
-                      ),
-                      _field(
-                        controller: _ownerCtrl,
-                        label: 'Nama Pemilik',
-                        maxLength: 100,
-                      ),
-                      _field(
-                        controller: _phoneCtrl,
-                        label: 'No. Telepon',
-                        maxLength: 20,
-                        keyboardType: TextInputType.phone,
-                        formatters: [FilteringTextInputFormatter.digitsOnly],
-                      ),
-                      _field(
-                        controller: _addressCtrl,
-                        label: 'Alamat',
-                        required: true,
-                        maxLines: 3,
-                        keyboardType: TextInputType.multiline,
-                      ),
-                      _salesDropdown(),
-                      _dayDropdown(),
-                      _field(
-                        controller: _notesCtrl,
-                        label: 'Catatan',
-                        maxLines: 3,
-                        keyboardType: TextInputType.multiline,
-                      ),
-                      const Divider(height: 24),
-                      _visitSection(),
-                    ],
+              const Padding(
+                padding: EdgeInsets.fromLTRB(20, 14, 20, 8),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Edit Customer',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
                   ),
                 ),
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: _saving
-                          ? null
-                          : () => Navigator.of(context).pop(),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.black87,
-                        minimumSize: const Size.fromHeight(46),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+              Flexible(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _field(
+                          controller: _nameCtrl,
+                          label: 'Nama Toko',
+                          required: true,
+                          maxLength: 150,
                         ),
-                      ),
-                      child: const Text('Batal'),
+                        _field(
+                          controller: _ownerCtrl,
+                          label: 'Nama Pemilik',
+                          maxLength: 100,
+                        ),
+                        _field(
+                          controller: _phoneCtrl,
+                          label: 'No. Telepon',
+                          maxLength: 20,
+                          keyboardType: TextInputType.phone,
+                          formatters: [FilteringTextInputFormatter.digitsOnly],
+                        ),
+                        _field(
+                          controller: _addressCtrl,
+                          label: 'Alamat',
+                          required: true,
+                          maxLines: 3,
+                          keyboardType: TextInputType.multiline,
+                        ),
+                        _salesDropdown(),
+                        _dayDropdown(),
+                        _field(
+                          controller: _notesCtrl,
+                          label: 'Catatan',
+                          maxLines: 3,
+                          keyboardType: TextInputType.multiline,
+                        ),
+                        const Divider(height: 24),
+                        _visitSection(),
+                        const Divider(height: 24),
+                        Center(
+                          child: TextButton.icon(
+                            onPressed: _saving ? null : _delete,
+                            icon: const Icon(
+                              Icons.delete_forever_outlined,
+                              size: 18,
+                            ),
+                            label: const Text('Hapus Customer'),
+                            style: TextButton.styleFrom(
+                              foregroundColor: AppColors.red,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: FilledButton(
-                      onPressed: _saving ? null : _save,
-                      style: FilledButton.styleFrom(
-                        backgroundColor: AppColors.red,
-                        foregroundColor: AppColors.white,
-                        minimumSize: const Size.fromHeight(46),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: _saving
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: AppColors.white,
-                              ),
-                            )
-                          : const Text('Simpan'),
-                    ),
-                  ),
-                ],
+                ),
               ),
-            ),
-          ],
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: _saving
+                            ? null
+                            : () => Navigator.of(context).pop(),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.black87,
+                          minimumSize: const Size.fromHeight(46),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text('Batal'),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: FilledButton(
+                        onPressed: _saving ? null : _save,
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.red,
+                          foregroundColor: AppColors.white,
+                          minimumSize: const Size.fromHeight(46),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: _saving
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: AppColors.white,
+                                ),
+                              )
+                            : const Text('Simpan'),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -1388,69 +1629,123 @@ class _OrderTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final date = order.createdAt;
-    return Container(
-      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-      decoration: BoxDecoration(
-        color: const Color(0xFF5A5A5A),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  order.invoice ?? 'Order #${order.id}',
-                  style: const TextStyle(
-                    color: AppColors.white,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w800,
-                  ),
+
+    return Material(
+      color: AppColors.white,
+      borderRadius: BorderRadius.circular(20),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: onDetail,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              Container(
+                width: 50,
+                height: 54,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF3F3F3),
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  date == null ? '-' : _fmtLong(date),
-                  style: const TextStyle(
-                    color: AppColors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Material(
-            color: AppColors.white,
-            borderRadius: BorderRadius.circular(16),
-            child: InkWell(
-              borderRadius: BorderRadius.circular(16),
-              onTap: onDetail,
-              child: const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
+                child: date == null
+                    ? const Center(child: Text('-'))
+                    : Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            '${date.day}',
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.black,
+                            ),
+                          ),
+                          Text(
+                            _months[date.month - 1]
+                                .substring(0, 3)
+                                .toUpperCase(),
+                            style: const TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.black54,
+                            ),
+                          ),
+                        ],
+                      ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'detail',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
+                      order.invoice ?? 'Order #${order.id}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
                         color: Colors.black,
                       ),
                     ),
-                    SizedBox(width: 4),
-                    Icon(
-                      Icons.receipt_long_outlined,
-                      size: 14,
-                      color: Colors.black,
+                    const SizedBox(height: 2),
+                    Text(
+                      date == null ? '-' : _fmtLong(date),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Colors.black54,
+                      ),
                     ),
                   ],
                 ),
               ),
-            ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 5,
+                ),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.black38, width: 1.2),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.receipt_long_outlined,
+                      size: 13,
+                      color: Colors.black54,
+                    ),
+                    SizedBox(width: 4),
+                    Text(
+                      'Detail',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.black54,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 6),
+              Container(
+                width: 28,
+                height: 28,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFF3F3F3),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.chevron_right,
+                  size: 18,
+                  color: Colors.black54,
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
