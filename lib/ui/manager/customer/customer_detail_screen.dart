@@ -115,9 +115,14 @@ class _SquareButton extends StatelessWidget {
 }
 
 class CustomerDetailScreen extends StatefulWidget {
-  const CustomerDetailScreen({super.key, required this.store});
+  const CustomerDetailScreen({
+    super.key,
+    required this.store,
+    this.canEdit = true,
+  });
 
   final CustomerStore store;
+  final bool canEdit;
 
   @override
   State<CustomerDetailScreen> createState() => _CustomerDetailScreenState();
@@ -487,28 +492,29 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
                   ),
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-                child: SizedBox(
-                  width: double.infinity,
-                  height: 48,
-                  child: FilledButton.icon(
-                    onPressed: _openEdit,
-                    icon: const Icon(Icons.edit_outlined, size: 18),
-                    label: const Text(
-                      'Edit Customer',
-                      style: TextStyle(fontWeight: FontWeight.w800),
-                    ),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.red,
-                      foregroundColor: AppColors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
+              if (widget.canEdit)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+                  child: SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: FilledButton.icon(
+                      onPressed: _openEdit,
+                      icon: const Icon(Icons.edit_outlined, size: 18),
+                      label: const Text(
+                        'Edit Customer',
+                        style: TextStyle(fontWeight: FontWeight.w800),
+                      ),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.red,
+                        foregroundColor: AppColors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
             ],
           ),
         ),
