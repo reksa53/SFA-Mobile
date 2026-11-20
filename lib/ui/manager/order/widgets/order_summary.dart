@@ -44,7 +44,7 @@ class OrderSummary extends StatelessWidget {
 }
 
 class OrderStat extends StatelessWidget {
-  const OrderStat({required this.label, required this.value});
+  const OrderStat({super.key, required this.label, required this.value}); 
 
   final String label;
   final int value;

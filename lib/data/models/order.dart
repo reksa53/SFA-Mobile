@@ -1,12 +1,13 @@
 import 'package:sfa_mobile/data/models/order_item.dart';
 
-enum OrderStatus { pending, accepted, rejected }
+enum OrderStatus {
+  pending('Pending'),
+  accepted('Accepted'),
+  rejected('Rejected');
 
-OrderStatus _parseStatus(String s) => switch (s) {
-      'accepted' => OrderStatus.accepted,
-      'rejected' => OrderStatus.rejected,
-      _ => OrderStatus.pending,
-    };
+  const OrderStatus(this.label);
+  final String label;
+}
 
 class Order {
   const Order({
@@ -15,6 +16,7 @@ class Order {
     required this.status,
     this.invoice,
     this.salesId,
+    this.salesName,
     this.customerId,
     this.items = const [],
   }) : assert(
@@ -24,9 +26,10 @@ class Order {
 
   final int? id;
   final String storeName;
-  final String? invoice; // null selama masih pending
+  final String? invoice;
   final OrderStatus status;
   final int? salesId;
+  final String? salesName;
   final int? customerId;
   final List<OrderItem> items;
 
@@ -40,11 +43,10 @@ class Order {
       storeName: (customer?['name'] ?? '').toString(),
       customerId: customer?['id'] as int?,
       salesId: sales?['id'] as int?,
-      status: _parseStatus(j['status'] as String? ?? 'pending'),
+      salesName: sales?['name'] as String?,
+      status: OrderStatus.values.asNameMap()[j['status']] ?? OrderStatus.pending,
       invoice: j['order_number'] as String?,
-      items: (j['items'] as List? ?? [])
-          .map((e) => OrderItem.fromJson(e as Map<String, dynamic>))
-          .toList(),
+      items: [for (final e in j['items'] as List? ?? []) OrderItem.fromJson(e as Map<String, dynamic>)],
     );
   }
 }
