@@ -55,6 +55,19 @@ class _SalesVisitScreenState extends State<SalesVisitScreen> {
     _load();
   }
 
+  // Tab yang tidak sedang tampil "dimatikan" (TickerMode = false) tapi tetap
+  // hidup. Saat tab dibuka lagi, ambil ulang data supaya perubahan dari tab
+  // lain (mis. Customer) langsung terlihat.
+  bool _tabAktif = true;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final aktif = TickerMode.of(context);
+    if (aktif && !_tabAktif && !_loading) _load();
+    _tabAktif = aktif;
+  }
+
   @override
   void dispose() {
     _search.dispose();
