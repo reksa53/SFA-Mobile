@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:dio/dio.dart';
 
 import '../models/product.dart';
 import 'api_client.dart';
@@ -35,8 +36,14 @@ class ProductService extends ChangeNotifier {
         last = res.data['meta']['last_page'];
       } while (page++ < last);
       _items = items;
-    } catch (_) {
-      error = 'Gagal memuat produk';
+     } on DioException catch (e) {
+      debugPrint('GET /products gagal: ${e.response?.statusCode} ${e.message}');
+      error = e.response == null
+          ? 'Tidak bisa terhubung ke server'
+          : 'Gagal memuat produk (${e.response!.statusCode})';
+    } catch (e) {
+      debugPrint('Data produk gagal dibaca: $e');
+      error = 'Gagal membaca data produk';
     } finally {
       loading = false;
       notifyListeners();
@@ -67,10 +74,39 @@ class ProductService extends ChangeNotifier {
     notifyListeners();
   }
 
-  void addBatch(Product p, ProductBatch b) {
+  // produk terbaru dari daftar, supaya layar detail ikut berubah
+Product current(Product p) =>
+    _items.firstWhere((x) => x.id != null && x.id == p.id, orElse: () => p);
+
+// ambil detail (dengan batch) lalu simpan ke daftar
+Future<void> loadDetail(Product p) async {
+  if (p.id == null) return;
+  try {
+    _replace(await fetch(p.id!));
+  } catch (_) {} // gagal: tetap tampilkan data dari list
+}
+
+void _replace(Product fresh) {
+  final i = _items.indexWhere((x) => x.id == fresh.id);
+  if (i >= 0) _items[i] = fresh;
+  notifyListeners();
+}
+
+// kirim ke server; balasannya produk lengkap (stok dan batch terbaru)
+Future<void> addBatch(Product p, ProductBatch b) async {
+  if (p.id == null) { // produk lokal, belum ada di server
     p.batches.add(b);
     notifyListeners();
+    return;
   }
+  final res = await ApiClient.instance.dio.post('/products/${p.id}/batches', data: {
+    'batch_number': b.number,
+    'expiry_date': b.expiry?.toIso8601String().substring(0, 10),
+    'quantity': b.initialQty,
+    'received_at': b.receivedAt.toIso8601String().substring(0, 10),
+  });
+  _replace(Product.fromJson(res.data['data']));
+}
 
   static List<String> _distinct(Iterable<String?> v) =>
       v.whereType<String>().toSet().toList()..sort();
