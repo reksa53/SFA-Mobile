@@ -174,6 +174,31 @@ class _VisitDetailScreenState extends State<VisitDetailScreen> {
               ),
             ],
           ),
+          
+                    if (_v.alamat.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Padding(
+                  padding: EdgeInsets.only(top: 1),
+                  child: Icon(Icons.location_on_outlined,
+                      size: 17, color: Colors.white60),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    _v.alamat,
+                    style: GoogleFonts.poppins(
+                      fontSize: 13,
+                      color: Colors.white70,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+
           const SizedBox(height: 10),
           VisitStatusChipDark(status: _v.tampilan),
           const Padding(

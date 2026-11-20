@@ -102,10 +102,19 @@ class PillChip extends StatelessWidget {
   }
 }
 
-Future<T?> showAppSheet<T>(BuildContext context, WidgetBuilder builder) =>
+Future<T?> showAppSheet<T>(
+  BuildContext context,
+  WidgetBuilder builder, {
+  double? maxHeightFactor, // null = perilaku lama
+}) =>
     showModalBottomSheet<T>(
       context: context,
       isScrollControlled: true,
+      isDismissible: true,
+      enableDrag: true,
+      constraints: maxHeightFactor == null
+          ? null
+          : BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * maxHeightFactor),
       backgroundColor: AppColors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
@@ -133,40 +142,64 @@ class SheetFrame extends StatelessWidget {
   Widget build(BuildContext context) => Padding(
         padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
         child: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(color: AppColors.grey, borderRadius: BorderRadius.circular(2)),
-                  ),
-                ),
-                const SizedBox(height: 14),
-                Row(children: [
-                  Expanded(
-                    child: Text(title,
-                        style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.black)),
-                  ),
-                  if (action != null)
-                    GestureDetector(
-                      onTap: onAction,
-                      child: Text(action!,
-                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: actionColor)),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: AppColors.grey,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
                     ),
-                ]),
-                child,
-              ],
-            ),
+                    const SizedBox(height: 14),
+                    Row(children: [
+                      Expanded(
+                        child: Text(
+                          title,
+                          style: const TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.black,
+                          ),
+                        ),
+                      ),
+                      if (action != null)
+                        GestureDetector(
+                          onTap: onAction,
+                          child: Text(
+                            action!,
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: actionColor,
+                            ),
+                          ),
+                        ),
+                    ]),
+                  ],
+                ),
+              ),
+              Flexible(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+                  child: child,
+                ),
+              ),
+            ],
           ),
         ),
       );
 }
-
 /// Kotak ber-border dengan judul (Brand, Kategori, Status).
 class SheetBox extends StatelessWidget {
   const SheetBox({super.key, required this.title, required this.child, this.caption, this.dim = false});

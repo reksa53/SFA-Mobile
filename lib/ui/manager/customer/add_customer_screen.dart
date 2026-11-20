@@ -1,9 +1,8 @@
-import 'dart:typed_data';
-
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:sfa_mobile/data/models/customer_store.dart';
 import 'package:sfa_mobile/data/models/sales.dart';
 import 'package:sfa_mobile/data/services/customer_service.dart';
 import 'package:sfa_mobile/data/services/sales_service.dart';
@@ -33,6 +32,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
   bool _salesFailed = false;
 
   int? _salesId;
+  int? _visitDay;
   Uint8List? _photo;
   bool _saving = false;
 
@@ -139,7 +139,8 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
     setState(() => _saving = true);
     try {
       await CustomerService().create(
-        salesId: _salesId!,
+        salesId: _salesId,
+        visitDay: _visitDay,
         name: _nameCtrl.text.trim(),
         ownerName: _ownerCtrl.text.trim(),
         phone: _phoneCtrl.text.trim(),
@@ -237,6 +238,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
                         textCapitalization: TextCapitalization.sentences,
                       ),
                       _salesDropdown(),
+                      _dayDropdown(),
                       _field(
                         controller: _notesCtrl,
                         label: 'Catatan',
@@ -356,35 +358,74 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
         ? 'Memuat sales...'
         : _salesFailed
         ? 'Gagal memuat sales'
-        : 'Belum ada sales';
+        : 'Belum ditentukan';
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          DropdownButtonFormField<int>(
+          DropdownButtonFormField<int?>(
             isExpanded: true,
             style: const TextStyle(color: Colors.black87),
             dropdownColor: AppColors.white,
             iconEnabledColor: Colors.black54,
-            decoration: _decoration('Sales yang Menangani', required: true),
+            decoration: _decoration('Sales yang Menangani'),
             hint: Text(hint),
             items: [
+              const DropdownMenuItem<int?>(
+                value: null,
+                child: Text('Belum ditentukan'),
+              ),
               for (final s in _salesOptions)
-                DropdownMenuItem(value: s.id, child: Text(s.nama)),
+                DropdownMenuItem<int?>(value: s.id, child: Text(s.nama)),
             ],
-            onChanged: _salesOptions.isEmpty
+            onChanged: _salesLoading
                 ? null
                 : (v) => setState(() => _salesId = v),
-            validator: (v) =>
-                v == null ? 'Pilih sales untuk customer ini' : null,
+            validator: (v) => (_visitDay != null && v == null)
+                ? 'Pilih sales kalau hari kunjungan diisi'
+                : null,
           ),
           if (_salesFailed)
             TextButton(
               onPressed: _loadSales,
               child: const Text('Coba muat ulang daftar sales'),
             ),
+        ],
+      ),
+    );
+  }
+
+  Widget _dayDropdown() {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          DropdownButtonFormField<int?>(
+            isExpanded: true,
+            style: const TextStyle(color: Colors.black87),
+            dropdownColor: AppColors.white,
+            iconEnabledColor: Colors.black54,
+            decoration: _decoration('Hari Kunjungan Tetap'),
+            items: [
+              const DropdownMenuItem<int?>(
+                value: null,
+                child: Text('Tidak ada jadwal tetap'),
+              ),
+              for (final e in kVisitDayNames.entries)
+                DropdownMenuItem<int?>(value: e.key, child: Text(e.value)),
+            ],
+            onChanged: (v) => setState(() => _visitDay = v),
+          ),
+          const Padding(
+            padding: EdgeInsets.only(left: 4, top: 4),
+            child: Text(
+              'Dipakai untuk jadwal kunjungan otomatis tiap minggu.',
+              style: TextStyle(fontSize: 11, color: Colors.black54),
+            ),
+          ),
         ],
       ),
     );

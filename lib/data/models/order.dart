@@ -18,6 +18,7 @@ class Order {
     this.salesId,
     this.salesName,
     this.customerId,
+    this.createdAt,
     this.items = const [],
   }) : assert(
           (status == OrderStatus.accepted) == (invoice != null),
@@ -31,6 +32,7 @@ class Order {
   final int? salesId;
   final String? salesName;
   final int? customerId;
+  final DateTime? createdAt;
   final List<OrderItem> items;
 
   int get total => items.fold(0, (sum, i) => sum + i.subtotal);
@@ -46,6 +48,7 @@ class Order {
       salesName: sales?['name'] as String?,
       status: OrderStatus.values.asNameMap()[j['status']] ?? OrderStatus.pending,
       invoice: j['order_number'] as String?,
+      createdAt: DateTime.tryParse(j['created_at'] as String? ?? '')?.toLocal(),
       items: [for (final e in j['items'] as List? ?? []) OrderItem.fromJson(e as Map<String, dynamic>)],
     );
   }

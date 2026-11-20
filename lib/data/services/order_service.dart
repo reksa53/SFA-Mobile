@@ -18,11 +18,13 @@ class OrderResult {
 class OrderService {
   final _dio = ApiClient.instance.dio;
 
-  Future<OrderResult> fetch({String? status, String? period, String? search}) async {
+  Future<OrderResult> fetch({String? status, String? period, String? search, int? customerId, int? perPage}) async {
     final res = await _dio.get('/orders', queryParameters: {
       'status': ?status,
       'period': ?period,
       if (search != null && search.isNotEmpty) 'search': search,
+      'customer_id': ?customerId,
+      'per_page': ?perPage,
     });
     final body = res.data as Map<String, dynamic>;
     final orders = [for (final e in body['data'] as List) Order.fromJson(e as Map<String, dynamic>)];

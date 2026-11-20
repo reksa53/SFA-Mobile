@@ -31,7 +31,7 @@ class _Ringkasan {
 class SalesVisitScreen extends StatefulWidget {
   const SalesVisitScreen({
     super.key,
-    this.repository = const DummySalesVisitRepository(),
+    this.repository = const ApiSalesVisitRepository(),
   });
 
   final SalesVisitRepository repository;

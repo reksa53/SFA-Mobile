@@ -43,11 +43,21 @@ enum VisitTampilan {
   final String singkat;
 }
 
+/// Satu pilihan toko di form Edit Visit (diambil dari tabel customers).
+class TokoPilihan {
+  const TokoPilihan({required this.id, required this.nama});
+
+  final int id;
+  final String nama;
+}
+
 class Visit {
   const Visit({
     required this.id,
     required this.tokoNama,
     required this.tanggal,
+    this.customerId,
+    this.alamat = '',
     this.status = VisitStatus.scheduled,
     this.catatan = '',
   });
@@ -55,6 +65,12 @@ class Visit {
   final int id;
   final String tokoNama;
   final DateTime tanggal; // hanya tanggal, tanpa jam
+
+  /// ID customer di server. Null untuk data dummy.
+  final int? customerId;
+
+  /// Alamat toko (dari customers.address). Kosong untuk data dummy.
+  final String alamat;
   final VisitStatus status;
   final String catatan; // catatan hasil kunjungan (diisi Sales)
 
@@ -73,8 +89,9 @@ class Visit {
     }
   }
 
-  /// ASUMSI nama field API: id, customer.name (atau store_name),
-  /// scheduled_date, status, notes. Sesuaikan dengan response Laravel.
+  /// Bentuk response Laravel (VisitResource):
+  /// {id, sales_id, visit_date, status, note, reported_at,
+  ///  customer: {id, code, name, address}}
   factory Visit.fromJson(Map<String, dynamic> json) {
     final toko = json['customer'] ?? json['toko'] ?? json['store'];
     final nama = json['store_name'] ??
@@ -84,11 +101,16 @@ class Visit {
         json['visit_date'] ??
         json['date'] ??
         json['tanggal'];
+    final idToko = json['customer_id'] ?? (toko is Map ? toko['id'] : null);
 
     return Visit(
       id: (json['id'] as num).toInt(),
       tokoNama: (nama ?? '').toString(),
       tanggal: dateOnly(DateTime.parse(tanggal.toString())),
+      customerId: idToko is num ? idToko.toInt() : null,
+      alamat: (toko is Map ? (toko['address'] ?? toko['alamat']) : null)
+              ?.toString() ??
+          '',
       status: VisitStatus.parse(json['status']),
       catatan: (json['notes'] ?? json['note'] ?? json['catatan'] ?? '')
           .toString(),
@@ -98,6 +120,8 @@ class Visit {
   Visit copyWith({
     String? tokoNama,
     DateTime? tanggal,
+    int? customerId,
+    String? alamat,
     VisitStatus? status,
     String? catatan,
   }) =>
@@ -105,6 +129,8 @@ class Visit {
         id: id,
         tokoNama: tokoNama ?? this.tokoNama,
         tanggal: tanggal ?? this.tanggal,
+        customerId: customerId ?? this.customerId,
+        alamat: alamat ?? this.alamat,
         status: status ?? this.status,
         catatan: catatan ?? this.catatan,
       );
