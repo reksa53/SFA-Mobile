@@ -345,37 +345,72 @@ class _AddSalesScreenState extends State<AddSalesScreen> {
                 ),
               ),
             ),
+            // Baris bawah: Cancel di kiri, SAVE (merah) di kanan, sama
+            // seperti layar Edit Visit.
             Padding(
               padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
-              child: SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: FilledButton(
-                  onPressed: _saving ? null : _simpan,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.red,
-                    foregroundColor: AppColors.white,
-                    minimumSize: Size.zero,
-                    shape: const StadiumBorder(),
-                  ),
-                  child: _saving
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: AppColors.white,
-                          ),
-                        )
-                      : Text(
-                          'SAVE',
+              child: Row(
+                children: [
+                  Expanded(
+                    flex: 36,
+                    child: SizedBox(
+                      height: 48,
+                      child: FilledButton(
+                        onPressed: _saving
+                            ? null
+                            : () => Navigator.of(context).maybePop(),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: const Color(0x24FFFFFF),
+                          foregroundColor: AppColors.white,
+                          disabledBackgroundColor: const Color(0x24FFFFFF),
+                          disabledForegroundColor: Colors.white38,
+                          minimumSize: Size.zero,
+                          shape: const StadiumBorder(),
+                        ),
+                        child: Text(
+                          'Cancel',
                           style: GoogleFonts.poppins(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.3,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
-                ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    flex: 64,
+                    child: SizedBox(
+                      height: 48,
+                      child: FilledButton(
+                        onPressed: _saving ? null : _simpan,
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.red,
+                          foregroundColor: AppColors.white,
+                          minimumSize: Size.zero,
+                          shape: const StadiumBorder(),
+                        ),
+                        child: _saving
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: AppColors.white,
+                                ),
+                              )
+                            : Text(
+                                'SAVE',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 0.3,
+                                ),
+                              ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],

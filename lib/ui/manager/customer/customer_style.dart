@@ -92,7 +92,8 @@ Widget custSaveButton({
   ),
 );
 
-/// Tombol teks "Cancel" di bawah SAVE.
+/// Tombol teks "Cancel" di bawah SAVE (gaya lama, sudah tidak dipakai di
+/// Add/Edit Customer; dibiarkan kalau ada layar lain yang masih memakainya).
 Widget custCancelButton(VoidCallback? onPressed) => TextButton(
   onPressed: onPressed,
   child: Text(
@@ -103,6 +104,51 @@ Widget custCancelButton(VoidCallback? onPressed) => TextButton(
       color: Colors.white70,
     ),
   ),
+);
+
+/// Baris tombol bawah, sama persis dengan Edit Visit:
+/// Cancel (putih transparan, kiri) + SAVE (merah, kanan).
+Widget custActionBar({
+  required VoidCallback? onSave,
+  required VoidCallback? onCancel,
+  required bool saving,
+  String saveLabel = 'SAVE',
+}) => Row(
+  children: [
+    Expanded(
+      flex: 36,
+      child: SizedBox(
+        height: 48,
+        child: FilledButton(
+          onPressed: onCancel,
+          style: FilledButton.styleFrom(
+            backgroundColor: const Color(0x24FFFFFF),
+            foregroundColor: AppColors.white,
+            disabledBackgroundColor: const Color(0x24FFFFFF),
+            disabledForegroundColor: Colors.white38,
+            minimumSize: Size.zero,
+            shape: const StadiumBorder(),
+          ),
+          child: Text(
+            'Cancel',
+            style: GoogleFonts.poppins(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ),
+    ),
+    const SizedBox(width: 10),
+    Expanded(
+      flex: 64,
+      child: custSaveButton(
+        onPressed: onSave,
+        saving: saving,
+        label: saveLabel,
+      ),
+    ),
+  ],
 );
 
 /// Dialog gelap (konfirmasi / popup) bergaya Edit Visit.

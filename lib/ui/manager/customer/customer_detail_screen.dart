@@ -1577,21 +1577,13 @@ class _EditCustomerSheetState extends State<_EditCustomerSheet> {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(24, 4, 24, 10),
+              padding: const EdgeInsets.fromLTRB(24, 10, 24, 16),
               child: SafeArea(
                 top: false,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    custSaveButton(
-                      onPressed: _saving ? null : _save,
-                      saving: _saving,
-                    ),
-                    custCancelButton(
-                      _saving ? null : () => Navigator.of(context).pop(),
-                    ),
-                  ],
+                child: custActionBar(
+                  onSave: _saving ? null : _save,
+                  onCancel: _saving ? null : () => Navigator.of(context).pop(),
+                  saving: _saving,
                 ),
               ),
             ),
