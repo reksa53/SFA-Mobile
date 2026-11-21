@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../data/models/sales.dart';
 import '../../../data/models/visit.dart';
 import '../../../data/repositories/sales_visit_repository.dart';
+import '../../../data/services/sales_service.dart';
 import '../../../utils/date_id.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/manager_colors.dart';
@@ -181,6 +182,62 @@ class _VisitScreenState extends State<VisitScreen> {
     }
   }
 
+  /// Hapus (nonaktifkan) sales ini setelah konfirmasi, lalu kembali ke daftar.
+  Future<void> _hapusSales() async {
+    final ya = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF565656),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(
+          'Delete sales?',
+          style: GoogleFonts.poppins(
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: AppColors.white,
+          ),
+        ),
+        content: Text(
+          '${widget.sales.nama} will be removed and can no longer log in. '
+          'Their stores become unassigned and upcoming scheduled visits are '
+          'deleted. Past visit history is kept.',
+          style: GoogleFonts.poppins(fontSize: 13, color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(
+              'Cancel',
+              style: GoogleFonts.poppins(color: Colors.white70),
+            ),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.red,
+              foregroundColor: AppColors.white,
+            ),
+            child: Text(
+              'Delete',
+              style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (ya != true || !mounted) return;
+
+    try {
+      await SalesService().delete(widget.sales.id);
+      if (!mounted) return;
+      _pesan('${widget.sales.nama} deleted');
+      Navigator.of(context).pop(); // daftar sales memuat ulang saat tampil lagi
+    } catch (e) {
+      if (!mounted) return;
+      _pesan(_pesanError(e, 'Failed to delete sales'));
+    }
+  }
+
   /// Detail kunjungan (hanya baca): toko, alamat, tanggal, status, catatan.
   void _detail(Visit v) {
     showModalBottomSheet<void>(
@@ -200,7 +257,7 @@ class _VisitScreenState extends State<VisitScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            _Header(sales: widget.sales),
+            _Header(sales: widget.sales, onDelete: _hapusSales),
             Expanded(child: _buildBody()),
             Padding(
               padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
@@ -607,9 +664,10 @@ class _VisitInfoSheet extends StatelessWidget {
 }
 
 class _Header extends StatelessWidget {
-  const _Header({required this.sales});
+  const _Header({required this.sales, required this.onDelete});
 
   final Sales sales;
+  final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -643,7 +701,8 @@ class _Header extends StatelessWidget {
               ),
             ),
             const Spacer(),
-            ConstrainedBox(
+            Flexible(
+              child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 170),
               child: Container(
                 padding: const EdgeInsets.fromLTRB(4, 4, 12, 4),
@@ -669,6 +728,22 @@ class _Header extends StatelessWidget {
                       ),
                     ),
                   ],
+                ),
+              ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Material(
+              color: const Color(0x1AFFFFFF),
+              borderRadius: BorderRadius.circular(12),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(12),
+                onTap: onDelete,
+                child: const SizedBox(
+                  width: 44,
+                  height: 44,
+                  child: Icon(Icons.delete_outline,
+                      size: 24, color: AppColors.white),
                 ),
               ),
             ),

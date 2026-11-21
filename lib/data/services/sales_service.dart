@@ -50,6 +50,11 @@ class SalesService {
     );
   }
 
+  /// Hapus (nonaktifkan) sales (DELETE /sales/{id}, khusus manager).
+  Future<void> delete(int id) async {
+    await _dio.delete('/sales/$id');
+  }
+
   /// Ambil pesan error pertama dari response 422 Laravel.
   static String errorMessage(DioException e) {
     final status = e.response?.statusCode;
