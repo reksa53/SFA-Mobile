@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:sfa_mobile/data/models/customer_store.dart';
 import 'package:sfa_mobile/data/models/sales.dart';
@@ -8,6 +9,7 @@ import 'package:sfa_mobile/data/services/customer_service.dart';
 import 'package:sfa_mobile/data/services/sales_service.dart';
 
 import '../../core/theme/app_colors.dart';
+import 'customer_style.dart';
 
 class AddCustomerScreen extends StatefulWidget {
   const AddCustomerScreen({super.key});
@@ -17,9 +19,7 @@ class AddCustomerScreen extends StatefulWidget {
 }
 
 class _AddCustomerScreenState extends State<AddCustomerScreen> {
-  static const _background = Color(0xFF3A3A3A);
-
-  final _formKey = GlobalKey<FormState>();
+    final _formKey = GlobalKey<FormState>();
   final _nameCtrl = TextEditingController();
   final _ownerCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController();
@@ -86,41 +86,38 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
       if (!mounted) return;
       setState(() => _photo = bytes);
     } catch (_) {
-      _showMessage('Tidak bisa membuka kamera/galeri');
+      _showMessage('Cannot open camera/gallery');
     }
   }
 
   void _showPhotoOptions() {
-    showModalBottomSheet<void>(
-      context: context,
-      builder: (ctx) => SafeArea(
+    Widget option(IconData icon, String text, VoidCallback onTap) => ListTile(
+      leading: Icon(icon, color: Colors.white70),
+      title: Text(
+        text,
+        style: GoogleFonts.poppins(fontSize: 14, color: AppColors.white),
+      ),
+      onTap: onTap,
+    );
+
+    showCustSheet<void>(
+      context,
+      (ctx) => SafeArea(
         child: Wrap(
           children: [
-            ListTile(
-              leading: const Icon(Icons.photo_camera_outlined),
-              title: const Text('Ambil foto'),
-              onTap: () {
-                Navigator.pop(ctx);
-                _pickPhoto(ImageSource.camera);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.photo_library_outlined),
-              title: const Text('Pilih dari galeri'),
-              onTap: () {
-                Navigator.pop(ctx);
-                _pickPhoto(ImageSource.gallery);
-              },
-            ),
+            option(Icons.photo_camera_outlined, 'Take photo', () {
+              Navigator.pop(ctx);
+              _pickPhoto(ImageSource.camera);
+            }),
+            option(Icons.photo_library_outlined, 'Choose from gallery', () {
+              Navigator.pop(ctx);
+              _pickPhoto(ImageSource.gallery);
+            }),
             if (_photo != null)
-              ListTile(
-                leading: const Icon(Icons.delete_outline),
-                title: const Text('Hapus foto'),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  setState(() => _photo = null);
-                },
-              ),
+              option(Icons.delete_outline, 'Remove photo', () {
+                Navigator.pop(ctx);
+                setState(() => _photo = null);
+              }),
           ],
         ),
       ),
@@ -153,7 +150,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
     } on DioException catch (e) {
       _showMessage(CustomerService.errorMessage(e));
     } catch (_) {
-      _showMessage('Terjadi kesalahan, coba lagi');
+      _showMessage('Something went wrong, please try again');
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -162,28 +159,38 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _background,
+      backgroundColor: AppColors.background,
       body: SafeArea(
         child: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(8, 12, 16, 12),
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
               child: Row(
                 children: [
-                  IconButton(
-                    onPressed: () => Navigator.of(context).maybePop(),
-                    icon: const Icon(
-                      Icons.chevron_left,
-                      color: AppColors.white,
-                      size: 30,
+                  Material(
+                    color: const Color(0x1AFFFFFF),
+                    borderRadius: BorderRadius.circular(12),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(12),
+                      onTap: () => Navigator.of(context).maybePop(),
+                      child: const SizedBox(
+                        width: 42,
+                        height: 42,
+                        child: Icon(
+                          Icons.chevron_left,
+                          color: AppColors.white,
+                          size: 26,
+                        ),
+                      ),
                     ),
                   ),
-                  const Text(
+                  const SizedBox(width: 14),
+                  Text(
                     'Add Customer',
-                    style: TextStyle(
+                    style: GoogleFonts.poppins(
                       color: AppColors.white,
-                      fontSize: 24,
-                      fontWeight: FontWeight.w800,
+                      fontSize: 26,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ],
@@ -193,14 +200,14 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
               child: Container(
                 margin: const EdgeInsets.symmetric(horizontal: 16),
                 decoration: BoxDecoration(
-                  color: AppColors.white,
+                  color: kCustPanel,
                   borderRadius: BorderRadius.circular(20),
                 ),
                 clipBehavior: Clip.antiAlias,
                 child: Form(
                   key: _formKey,
                   child: ListView(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(18),
                     children: [
                       Center(
                         child: _PhotoPicker(
@@ -211,27 +218,31 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
                       const SizedBox(height: 20),
                       _field(
                         controller: _nameCtrl,
-                        label: 'Nama Toko',
+                        label: 'Store name',
+                        hint: 'Enter store name',
                         required: true,
                         maxLength: 150,
                         textCapitalization: TextCapitalization.words,
                       ),
                       _field(
                         controller: _ownerCtrl,
-                        label: 'Nama Pemilik',
+                        label: 'Owner name',
+                        hint: 'Enter owner name',
                         maxLength: 100,
                         textCapitalization: TextCapitalization.words,
                       ),
                       _field(
                         controller: _phoneCtrl,
-                        label: 'No. Telepon',
+                        label: 'Phone',
+                        hint: 'Enter phone number',
                         maxLength: 20,
                         keyboardType: TextInputType.phone,
                         formatters: [FilteringTextInputFormatter.digitsOnly],
                       ),
                       _field(
                         controller: _addressCtrl,
-                        label: 'Alamat',
+                        label: 'Address',
+                        hint: 'Enter address',
                         required: true,
                         maxLines: 3,
                         keyboardType: TextInputType.multiline,
@@ -241,7 +252,8 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
                       _dayDropdown(),
                       _field(
                         controller: _notesCtrl,
-                        label: 'Catatan',
+                        label: 'Notes',
+                        hint: 'Optional notes',
                         maxLines: 3,
                         keyboardType: TextInputType.multiline,
                         textCapitalization: TextCapitalization.sentences,
@@ -252,48 +264,17 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-              child: Row(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: _saving
-                          ? null
-                          : () => Navigator.of(context).pop(),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppColors.white,
-                        side: const BorderSide(color: AppColors.white),
-                        minimumSize: const Size.fromHeight(46),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: const Text('Batal'),
-                    ),
+                  custSaveButton(
+                    onPressed: _saving ? null : _submit,
+                    saving: _saving,
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: FilledButton(
-                      onPressed: _saving ? null : _submit,
-                      style: FilledButton.styleFrom(
-                        backgroundColor: AppColors.red,
-                        foregroundColor: AppColors.white,
-                        minimumSize: const Size.fromHeight(46),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: _saving
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: AppColors.white,
-                              ),
-                            )
-                          : const Text('Simpan'),
-                    ),
+                  custCancelButton(
+                    _saving ? null : () => Navigator.of(context).pop(),
                   ),
                 ],
               ),
@@ -304,29 +285,10 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
     );
   }
 
-  InputDecoration _decoration(String label, {bool required = false}) {
-    return InputDecoration(
-      labelText: required ? '$label *' : label,
-      labelStyle: const TextStyle(color: Color(0xFF757575)),
-      floatingLabelStyle: const TextStyle(color: AppColors.red),
-      counterText: '',
-      filled: true,
-      fillColor: const Color(0xFFF3F3F3),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide: BorderSide.none,
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide: const BorderSide(color: AppColors.red, width: 1.5),
-      ),
-    );
-  }
-
   Widget _field({
     required TextEditingController controller,
     required String label,
+    String? hint,
     bool required = false,
     int? maxLength,
     int maxLines = 1,
@@ -336,46 +298,58 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
-      child: TextFormField(
-        controller: controller,
-        style: const TextStyle(color: Colors.black87),
-        maxLength: maxLength,
-        maxLines: maxLines,
-        keyboardType: keyboardType,
-        textCapitalization: textCapitalization,
-        inputFormatters: formatters,
-        decoration: _decoration(label, required: required),
-        validator: required
-            ? (v) =>
-                  (v == null || v.trim().isEmpty) ? '$label wajib diisi' : null
-            : null,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          custLabel(required ? '$label *' : label),
+          TextFormField(
+            controller: controller,
+            style: custInputStyle(),
+            cursorColor: AppColors.white,
+            maxLength: maxLength,
+            maxLines: maxLines,
+            keyboardType: keyboardType,
+            textCapitalization: textCapitalization,
+            inputFormatters: formatters,
+            decoration: custDecoration(hint: hint),
+            validator: required
+                ? (v) => (v == null || v.trim().isEmpty)
+                      ? '$label is required'
+                      : null
+                : null,
+          ),
+        ],
       ),
     );
   }
 
   Widget _salesDropdown() {
     final hint = _salesLoading
-        ? 'Memuat sales...'
+        ? 'Loading sales...'
         : _salesFailed
-        ? 'Gagal memuat sales'
-        : 'Belum ditentukan';
+        ? 'Failed to load sales'
+        : 'Not assigned';
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          custLabel('Sales in charge'),
           DropdownButtonFormField<int?>(
             isExpanded: true,
-            style: const TextStyle(color: Colors.black87),
-            dropdownColor: AppColors.white,
-            iconEnabledColor: Colors.black54,
-            decoration: _decoration('Sales yang Menangani'),
-            hint: Text(hint),
+            style: custInputStyle(),
+            dropdownColor: kCustPanel,
+            iconEnabledColor: Colors.white70,
+            decoration: custDecoration(),
+            hint: Text(
+              hint,
+              style: GoogleFonts.poppins(fontSize: 14, color: Colors.white38),
+            ),
             items: [
               const DropdownMenuItem<int?>(
                 value: null,
-                child: Text('Belum ditentukan'),
+                child: Text('Not assigned'),
               ),
               for (final s in _salesOptions)
                 DropdownMenuItem<int?>(value: s.id, child: Text(s.nama)),
@@ -384,13 +358,16 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
                 ? null
                 : (v) => setState(() => _salesId = v),
             validator: (v) => (_visitDay != null && v == null)
-                ? 'Pilih sales kalau hari kunjungan diisi'
+                ? 'Select a sales if a visit day is set'
                 : null,
           ),
           if (_salesFailed)
             TextButton(
               onPressed: _loadSales,
-              child: const Text('Coba muat ulang daftar sales'),
+              child: Text(
+                'Reload sales list',
+                style: GoogleFonts.poppins(color: AppColors.white),
+              ),
             ),
         ],
       ),
@@ -403,27 +380,35 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          custLabel('Fixed visit day'),
           DropdownButtonFormField<int?>(
             isExpanded: true,
-            style: const TextStyle(color: Colors.black87),
-            dropdownColor: AppColors.white,
-            iconEnabledColor: Colors.black54,
-            decoration: _decoration('Hari Kunjungan Tetap'),
+            style: custInputStyle(),
+            dropdownColor: kCustPanel,
+            iconEnabledColor: Colors.white70,
+            decoration: custDecoration(),
+            hint: Text(
+              'No fixed schedule',
+              style: GoogleFonts.poppins(fontSize: 14, color: Colors.white38),
+            ),
             items: [
               const DropdownMenuItem<int?>(
                 value: null,
-                child: Text('Tidak ada jadwal tetap'),
+                child: Text('No fixed schedule'),
               ),
               for (final e in kVisitDayNames.entries)
-                DropdownMenuItem<int?>(value: e.key, child: Text(e.value)),
+                DropdownMenuItem<int?>(
+                  value: e.key,
+                  child: Text(customerDayName(e.key)),
+                ),
             ],
             onChanged: (v) => setState(() => _visitDay = v),
           ),
-          const Padding(
-            padding: EdgeInsets.only(left: 4, top: 4),
+          Padding(
+            padding: const EdgeInsets.only(left: 4, top: 6),
             child: Text(
-              'Dipakai untuk jadwal kunjungan otomatis tiap minggu.',
-              style: TextStyle(fontSize: 11, color: Colors.black54),
+              'Used to generate weekly visit schedules automatically.',
+              style: GoogleFonts.poppins(fontSize: 11, color: Colors.white54),
             ),
           ),
         ],
@@ -445,16 +430,16 @@ class _PhotoPicker extends StatelessWidget {
       child: Stack(
         children: [
           ClipRRect(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(16),
             child: Container(
               width: 110,
               height: 110,
-              color: const Color(0xFFA8A8A8),
+              color: kCustField,
               child: photo == null
                   ? const Icon(
                       Icons.storefront_outlined,
                       size: 40,
-                      color: AppColors.white,
+                      color: Colors.white54,
                     )
                   : Image.memory(photo!, fit: BoxFit.cover),
             ),

@@ -16,7 +16,7 @@ class ManagerShell extends StatelessWidget {
     NavItem(label: 'Product', icon: Icons.inventory_2_outlined),
     NavItem(label: 'Sales & Visit', icon: Icons.route_outlined),
     NavItem(label: 'Order', icon: Icons.receipt_long_outlined),
-    NavItem(label: 'Akun', icon: Icons.person_outline),
+    NavItem(label: 'Account', icon: Icons.person_outline),
   ];
 
   // Ganti PlaceholderPage dengan layar sungguhan saat fiturnya jadi.

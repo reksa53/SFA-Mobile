@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:sfa_mobile/data/models/customer_visit.dart';
 import 'package:sfa_mobile/data/models/sales.dart';
 import 'package:sfa_mobile/data/services/customer_service.dart';
@@ -10,21 +11,9 @@ import 'package:sfa_mobile/data/services/order_service.dart';
 
 import '../../core/theme/app_colors.dart';
 import 'customer_list_screen.dart';
+import 'customer_style.dart';
 
-const _months = [
-  'Januari',
-  'Februari',
-  'Maret',
-  'April',
-  'Mei',
-  'Juni',
-  'Juli',
-  'Agustus',
-  'September',
-  'Oktober',
-  'November',
-  'Desember',
-];
+const _months = _monthsEn;
 
 const _monthsEn = [
   'January',
@@ -64,9 +53,9 @@ const _colorVisited = Color(0xFF2ECC40);
 const _colorNotVisited = Color(0xFFE53935);
 
 String _statusLabel(CustomerVisit v) => switch (v.status) {
-  CustomerVisitStatus.visited => 'Sudah dikunjungi',
-  CustomerVisitStatus.notVisited => 'Tidak dikunjungi',
-  CustomerVisitStatus.scheduled => v.isOverdue ? 'Terlewat' : 'Terjadwal',
+  CustomerVisitStatus.visited => 'Visited',
+  CustomerVisitStatus.notVisited => 'Not visited',
+  CustomerVisitStatus.scheduled => v.isOverdue ? 'Overdue' : 'Scheduled',
 };
 
 Color _statusColor(CustomerVisit v) => switch (v.status) {
@@ -76,7 +65,7 @@ Color _statusColor(CustomerVisit v) => switch (v.status) {
     v.isOverdue ? _colorOverdue : _colorScheduled,
 };
 
-const _cardBg = Color(0xFF4A4A4A);
+const _cardBg = kCustPanel;
 
 BoxDecoration _cardDeco(double radius) => BoxDecoration(
   color: _cardBg,
@@ -129,9 +118,7 @@ class CustomerDetailScreen extends StatefulWidget {
 }
 
 class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
-  static const _background = Color(0xFF3A3A3A);
-
-  final _service = CustomerService();
+    final _service = CustomerService();
   final _orderService = OrderService();
   List<Order> _orders = const [];
   bool _loadingOrders = true;
@@ -248,10 +235,10 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
           child: Center(
             child: Column(
               children: [
-                const Text('Gagal memuat history order', style: white),
+                const Text('Failed to load order history', style: white),
                 TextButton(
                   onPressed: _loadOrders,
-                  child: const Text('Coba lagi'),
+                  child: const Text('Try again'),
                 ),
               ],
             ),
@@ -263,7 +250,7 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
       return const [
         Padding(
           padding: EdgeInsets.all(24),
-          child: Center(child: Text('Belum ada order', style: white)),
+          child: Center(child: Text('No orders yet', style: white)),
         ),
       ];
     }
@@ -278,124 +265,116 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
 
   /// Popup invoice untuk satu order.
   void _showInvoice(Order o) {
-    showDialog<void>(
+    showCustDialog<void>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.white,
-        titleTextStyle: const TextStyle(color: Colors.black87),
-        contentTextStyle: const TextStyle(color: Colors.black87),
-        title: Text(
-          o.invoice ?? 'Order #${o.id}',
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
-        ),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                o.createdAt == null ? '-' : _fmtLong(o.createdAt!),
-                style: const TextStyle(fontSize: 12, color: Colors.black54),
+      title: o.invoice ?? 'Order #${o.id}',
+      content: SizedBox(
+        width: double.maxFinite,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              o.createdAt == null ? '-' : _fmtLong(o.createdAt!),
+              style: GoogleFonts.poppins(fontSize: 12, color: Colors.white70),
+            ),
+            const Divider(height: 20, color: Colors.white24),
+            Flexible(
+              child: ListView.separated(
+                shrinkWrap: true,
+                itemCount: o.items.length,
+                separatorBuilder: (_, _) => const SizedBox(height: 8),
+                itemBuilder: (_, i) {
+                  final it = o.items[i];
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              it.productName,
+                              style: GoogleFonts.poppins(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.white,
+                              ),
+                            ),
+                            Text(
+                              '${it.quantity} x ${_rupiah(it.unitPrice)}',
+                              style: GoogleFonts.poppins(
+                                fontSize: 11,
+                                color: Colors.white60,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Text(
+                        _rupiah(it.unitPrice * it.quantity),
+                        style: GoogleFonts.poppins(
+                          fontSize: 13,
+                          color: AppColors.white,
+                        ),
+                      ),
+                    ],
+                  );
+                },
               ),
-              const Divider(height: 20),
-              Flexible(
-                child: ListView.separated(
-                  shrinkWrap: true,
-                  itemCount: o.items.length,
-                  separatorBuilder: (_, _) => const SizedBox(height: 8),
-                  itemBuilder: (_, i) {
-                    final it = o.items[i];
-                    return Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                it.productName,
-                                style: const TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              Text(
-                                '${it.quantity} x ${_rupiah(it.unitPrice)}',
-                                style: const TextStyle(
-                                  fontSize: 11,
-                                  color: Colors.black54,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Text(
-                          _rupiah(it.unitPrice * it.quantity),
-                          style: const TextStyle(fontSize: 13),
-                        ),
-                      ],
-                    );
-                  },
+            ),
+            const Divider(height: 20, color: Colors.white24),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Total',
+                    style: GoogleFonts.poppins(
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.white,
+                    ),
+                  ),
                 ),
-              ),
-              const Divider(height: 20),
-              Row(
-                children: [
-                  const Expanded(
-                    child: Text(
-                      'Total',
-                      style: TextStyle(fontWeight: FontWeight.w800),
-                    ),
+                Text(
+                  _rupiah(o.total),
+                  style: GoogleFonts.poppins(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.white,
                   ),
-                  Text(
-                    _rupiah(o.total),
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
+                ),
+              ],
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Tutup'),
-          ),
-        ],
       ),
+      actions: [
+        Builder(
+          builder: (ctx) =>
+              custDialogAction('Close', () => Navigator.pop(ctx)),
+        ),
+      ],
     );
   }
 
   /// Popup detail kunjungan pada tanggal yang diketuk.
   void _showDay(DateTime day, List<CustomerVisit> list) {
-    showDialog<void>(
+    showCustDialog<void>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.white,
-        titleTextStyle: const TextStyle(color: Colors.black87),
-        contentTextStyle: const TextStyle(color: Colors.black87),
-        title: Text(
-          _fmtLong(day),
-          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+      title: _fmtLong(day),
+      content: SizedBox(
+        width: double.maxFinite,
+        child: ListView(
+          shrinkWrap: true,
+          children: [for (final v in list) _VisitDetailCard(visit: v)],
         ),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: ListView(
-            shrinkWrap: true,
-            children: [for (final v in list) _VisitDetailCard(visit: v)],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Tutup'),
-          ),
-        ],
       ),
+      actions: [
+        Builder(
+          builder: (ctx) =>
+              custDialogAction('Close', () => Navigator.pop(ctx)),
+        ),
+      ],
     );
   }
 
@@ -405,9 +384,9 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
-      backgroundColor: AppColors.white,
+      backgroundColor: kCustPanel,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
       ),
       builder: (_) => _EditCustomerSheet(store: _store, visits: _visits),
     );
@@ -431,7 +410,7 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
         if (!didPop) Navigator.of(context).pop(_changed);
       },
       child: Scaffold(
-        backgroundColor: _background,
+        backgroundColor: AppColors.background,
         body: SafeArea(
           child: Column(
             children: [
@@ -445,12 +424,12 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
                       onTap: () => Navigator.of(context).maybePop(),
                     ),
                     const SizedBox(width: 16),
-                    const Text(
+                    Text(
                       'Customer',
-                      style: TextStyle(
+                      style: GoogleFonts.poppins(
                         color: AppColors.white,
                         fontSize: 28,
-                        fontWeight: FontWeight.w800,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                   ],
@@ -478,12 +457,12 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
                         onDayTap: _showDay,
                       ),
                       const SizedBox(height: 22),
-                      const Text(
-                        'History Order',
-                        style: TextStyle(
+                      Text(
+                        'Order History',
+                        style: GoogleFonts.poppins(
                           color: AppColors.white,
                           fontSize: 18,
-                          fontWeight: FontWeight.w800,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                       const SizedBox(height: 10),
@@ -501,16 +480,17 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
                     child: FilledButton.icon(
                       onPressed: _openEdit,
                       icon: const Icon(Icons.edit_outlined, size: 18),
-                      label: const Text(
-                        'Edit Customer',
-                        style: TextStyle(fontWeight: FontWeight.w800),
+                      label: Text(
+                        'EDIT CUSTOMER',
+                        style: GoogleFonts.poppins(
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.3,
+                        ),
                       ),
                       style: FilledButton.styleFrom(
                         backgroundColor: AppColors.red,
                         foregroundColor: AppColors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
+                        shape: const StadiumBorder(),
                       ),
                     ),
                   ),
@@ -591,11 +571,11 @@ class _InfoCard extends StatelessWidget {
                 child: Container(
                   width: 64,
                   height: 64,
-                  color: const Color(0xFFF3F3F3),
+                  color: kCustField,
                   child: (photo == null || photo.isEmpty)
                       ? const Icon(
                           Icons.storefront_outlined,
-                          color: Colors.black38,
+                          color: Colors.white54,
                           size: 28,
                         )
                       : Image.network(
@@ -603,7 +583,7 @@ class _InfoCard extends StatelessWidget {
                           fit: BoxFit.cover,
                           errorBuilder: (_, _, _) => const Icon(
                             Icons.storefront_outlined,
-                            color: Colors.black38,
+                            color: Colors.white54,
                             size: 28,
                           ),
                         ),
@@ -645,7 +625,7 @@ class _InfoCard extends StatelessWidget {
               _chip(Icons.badge_outlined, 'Sales: ${store.salesName ?? '-'}'),
               _chip(
                 Icons.event_repeat_outlined,
-                store.visitDayName ?? 'Tidak ada jadwal tetap',
+                customerDayName(store.visitDay),
               ),
             ],
           ),
@@ -799,10 +779,10 @@ class _CalendarCard extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               const Text(
-                'Gagal memuat jadwal visit',
+                'Failed to load visit schedule',
                 style: TextStyle(color: Colors.white70),
               ),
-              TextButton(onPressed: onRetry, child: const Text('Coba lagi')),
+              TextButton(onPressed: onRetry, child: const Text('Try again')),
             ],
           ),
         ),
@@ -979,8 +959,8 @@ class _VisitDetailCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFFF3F3F3),
-        borderRadius: BorderRadius.circular(10),
+        color: kCustField,
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1003,11 +983,11 @@ class _VisitDetailCard extends StatelessWidget {
           const SizedBox(height: 10),
           _line(Icons.badge_outlined, 'Sales', visit.salesName ?? '-'),
           if (note != null && note.isNotEmpty)
-            _line(Icons.notes_outlined, 'Catatan', note),
+            _line(Icons.notes_outlined, 'Notes', note),
           if (reported != null)
             _line(
               Icons.check_circle_outline,
-              'Dilaporkan',
+              'Reported',
               '${_fmtLong(reported)}, ${_pad2(reported.hour)}:${_pad2(reported.minute)}',
             ),
         ],
@@ -1020,19 +1000,23 @@ class _VisitDetailCard extends StatelessWidget {
     child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, size: 16, color: Colors.black54),
+        Icon(icon, size: 16, color: Colors.white60),
         const SizedBox(width: 8),
         SizedBox(
           width: 72,
           child: Text(
             label,
-            style: const TextStyle(fontSize: 12, color: Colors.black54),
+            style: const TextStyle(fontSize: 12, color: Colors.white60),
           ),
         ),
         Expanded(
           child: Text(
             value,
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: AppColors.white,
+            ),
           ),
         ),
       ],
@@ -1209,10 +1193,10 @@ class _EditCustomerSheetState extends State<_EditCustomerSheet> {
       if (!mounted) return;
       Navigator.of(context).pop('saved');
     } on DioException catch (e) {
-      final extra = profileSaved ? ' (profil sudah tersimpan)' : '';
+      final extra = profileSaved ? ' (profile already saved)' : '';
       _msg('${CustomerService.errorMessage(e)}$extra');
     } catch (_) {
-      _msg('Terjadi kesalahan, coba lagi');
+      _msg('Something went wrong, please try again');
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -1221,32 +1205,27 @@ class _EditCustomerSheetState extends State<_EditCustomerSheet> {
   Future<void> _delete() async {
     if (_saving) return;
 
-    final ok = await showDialog<bool>(
+    final ok = await showCustDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.white,
-        titleTextStyle: const TextStyle(color: Colors.black87),
-        contentTextStyle: const TextStyle(color: Colors.black87),
-        title: const Text(
-          'Hapus customer?',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
-        ),
-        content: Text(
-          '"${widget.store.storeName}" akan dihapus beserta jadwal visitnya. '
-          'Tindakan ini tidak bisa dibatalkan.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Batal'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            style: TextButton.styleFrom(foregroundColor: AppColors.red),
-            child: const Text('Hapus'),
-          ),
-        ],
+      title: 'Delete customer?',
+      content: Text(
+        '"${widget.store.storeName}" will be deleted along with its visit '
+        'schedule. This action cannot be undone.',
+        style: GoogleFonts.poppins(fontSize: 13.5, color: Colors.white70),
       ),
+      actions: [
+        Builder(
+          builder: (ctx) =>
+              custDialogAction('Cancel', () => Navigator.pop(ctx, false)),
+        ),
+        Builder(
+          builder: (ctx) => custDialogAction(
+            'Delete',
+            () => Navigator.pop(ctx, true),
+            danger: true,
+          ),
+        ),
+      ],
     );
     if (ok != true) return;
 
@@ -1258,35 +1237,16 @@ class _EditCustomerSheetState extends State<_EditCustomerSheet> {
     } on DioException catch (e) {
       _msg(CustomerService.errorMessage(e));
     } catch (_) {
-      _msg('Terjadi kesalahan, coba lagi');
+      _msg('Something went wrong, please try again');
     } finally {
       if (mounted) setState(() => _saving = false);
     }
   }
 
-  InputDecoration _decoration(String label, {bool required = false}) {
-    return InputDecoration(
-      labelText: required ? '$label *' : label,
-      labelStyle: const TextStyle(color: Color(0xFF757575)),
-      floatingLabelStyle: const TextStyle(color: AppColors.red),
-      counterText: '',
-      filled: true,
-      fillColor: const Color(0xFFF3F3F3),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide: BorderSide.none,
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide: const BorderSide(color: AppColors.red, width: 1.5),
-      ),
-    );
-  }
-
   Widget _field({
     required TextEditingController controller,
     required String label,
+    String? hint,
     bool required = false,
     int? maxLength,
     int maxLines = 1,
@@ -1295,18 +1255,26 @@ class _EditCustomerSheetState extends State<_EditCustomerSheet> {
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
-      child: TextFormField(
-        controller: controller,
-        style: const TextStyle(color: Colors.black87),
-        maxLength: maxLength,
-        maxLines: maxLines,
-        keyboardType: keyboardType,
-        inputFormatters: formatters,
-        decoration: _decoration(label, required: required),
-        validator: required
-            ? (v) =>
-                  (v == null || v.trim().isEmpty) ? '$label wajib diisi' : null
-            : null,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          custLabel(required ? '$label *' : label),
+          TextFormField(
+            controller: controller,
+            style: custInputStyle(),
+            cursorColor: AppColors.white,
+            maxLength: maxLength,
+            maxLines: maxLines,
+            keyboardType: keyboardType,
+            inputFormatters: formatters,
+            decoration: custDecoration(hint: hint),
+            validator: required
+                ? (v) => (v == null || v.trim().isEmpty)
+                      ? '$label is required'
+                      : null
+                : null,
+          ),
+        ],
       ),
     );
   }
@@ -1323,32 +1291,44 @@ class _EditCustomerSheetState extends State<_EditCustomerSheet> {
         padding: const EdgeInsets.only(bottom: 14),
         child: Row(
           children: [
-            const Expanded(child: Text('Gagal memuat daftar sales')),
-            TextButton(onPressed: _loadSales, child: const Text('Coba lagi')),
+            Expanded(
+              child: Text(
+                'Failed to load sales list',
+                style: GoogleFonts.poppins(color: Colors.white70),
+              ),
+            ),
+            TextButton(onPressed: _loadSales, child: const Text('Try again')),
           ],
         ),
       );
     }
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
-      child: DropdownButtonFormField<int?>(
-        initialValue: _salesId,
-        isExpanded: true,
-        style: const TextStyle(color: Colors.black87),
-        dropdownColor: AppColors.white,
-        decoration: _decoration('Sales yang Menangani'),
-        items: [
-          const DropdownMenuItem<int?>(
-            value: null,
-            child: Text('Belum ditentukan'),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          custLabel('Sales in charge'),
+          DropdownButtonFormField<int?>(
+            initialValue: _salesId,
+            isExpanded: true,
+            style: custInputStyle(),
+            dropdownColor: kCustPanel,
+            iconEnabledColor: Colors.white70,
+            decoration: custDecoration(),
+            items: [
+              const DropdownMenuItem<int?>(
+                value: null,
+                child: Text('Not assigned'),
+              ),
+              for (final s in _sales)
+                DropdownMenuItem<int?>(value: s.id, child: Text(s.nama)),
+            ],
+            onChanged: (v) => setState(() => _salesId = v),
+            validator: (v) => (_visitDay != null && v == null)
+                ? 'Select a sales if a visit day is set'
+                : null,
           ),
-          for (final s in _sales)
-            DropdownMenuItem<int?>(value: s.id, child: Text(s.nama)),
         ],
-        onChanged: (v) => setState(() => _salesId = v),
-        validator: (v) => (_visitDay != null && v == null)
-            ? 'Pilih sales kalau hari kunjungan diisi'
-            : null,
       ),
     );
   }
@@ -1356,21 +1336,31 @@ class _EditCustomerSheetState extends State<_EditCustomerSheet> {
   Widget _dayDropdown() {
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
-      child: DropdownButtonFormField<int?>(
-        initialValue: _visitDay,
-        isExpanded: true,
-        style: const TextStyle(color: Colors.black87),
-        dropdownColor: AppColors.white,
-        decoration: _decoration('Hari Kunjungan Tetap'),
-        items: [
-          const DropdownMenuItem<int?>(
-            value: null,
-            child: Text('Tidak ada jadwal tetap'),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          custLabel('Fixed visit day'),
+          DropdownButtonFormField<int?>(
+            initialValue: _visitDay,
+            isExpanded: true,
+            style: custInputStyle(),
+            dropdownColor: kCustPanel,
+            iconEnabledColor: Colors.white70,
+            decoration: custDecoration(),
+            items: [
+              const DropdownMenuItem<int?>(
+                value: null,
+                child: Text('No fixed schedule'),
+              ),
+              for (final e in kVisitDayNames.entries)
+                DropdownMenuItem<int?>(
+                  value: e.key,
+                  child: Text(customerDayName(e.key)),
+                ),
+            ],
+            onChanged: (v) => setState(() => _visitDay = v),
           ),
-          for (final e in kVisitDayNames.entries)
-            DropdownMenuItem<int?>(value: e.key, child: Text(e.value)),
         ],
-        onChanged: (v) => setState(() => _visitDay = v),
       ),
     );
   }
@@ -1378,12 +1368,12 @@ class _EditCustomerSheetState extends State<_EditCustomerSheet> {
   String _visitInfo(bool salesChanged) {
     if (_salesId == null) {
       return widget.store.salesId == null
-          ? 'Pilih sales dulu untuk menambah jadwal baru.'
-          : 'Sales dikosongkan: jadwal yang sudah ada tetap atas nama sales lama.';
+          ? 'Select a sales first to add a new schedule.'
+          : 'Sales cleared: existing schedules stay with the previous sales.';
     }
     return salesChanged
-        ? 'Sales diganti: jadwal yang belum dilaporkan akan dipindah ke sales baru.'
-        : 'Hanya jadwal yang belum dilaporkan yang bisa diubah.';
+        ? 'Sales changed: unreported schedules will move to the new sales.'
+        : 'Only unreported schedules can be changed.';
   }
 
   Widget _visitSection() {
@@ -1394,40 +1384,45 @@ class _EditCustomerSheetState extends State<_EditCustomerSheet> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Jadwal Visit',
-          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
+        Text(
+          'Visit schedule',
+          style: GoogleFonts.poppins(
+            fontSize: 15,
+            fontWeight: FontWeight.w700,
+            color: AppColors.white,
+          ),
         ),
         const SizedBox(height: 2),
         Text(
           _visitInfo(salesChanged),
-          style: const TextStyle(fontSize: 11, color: Colors.black54),
+          style: GoogleFonts.poppins(fontSize: 11, color: Colors.white60),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 10),
         if (shown.isEmpty)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 8),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
             child: Text(
-              'Belum ada jadwal.',
-              style: TextStyle(fontSize: 12, color: Colors.black54),
+              'No schedules yet.',
+              style: GoogleFonts.poppins(fontSize: 12, color: Colors.white60),
             ),
           ),
         for (final d in shown)
           Container(
-            margin: const EdgeInsets.only(bottom: 6),
-            padding: const EdgeInsets.fromLTRB(12, 4, 4, 4),
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.fromLTRB(14, 4, 4, 4),
             decoration: BoxDecoration(
-              color: const Color(0xFFF3F3F3),
-              borderRadius: BorderRadius.circular(10),
+              color: kCustField,
+              borderRadius: BorderRadius.circular(12),
             ),
             child: Row(
               children: [
                 Expanded(
                   child: Text(
                     _fmtDate(d.date),
-                    style: const TextStyle(
+                    style: GoogleFonts.poppins(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
+                      color: AppColors.white,
                     ),
                   ),
                 ),
@@ -1435,23 +1430,23 @@ class _EditCustomerSheetState extends State<_EditCustomerSheet> {
                   Padding(
                     padding: const EdgeInsets.only(right: 4),
                     child: Text(
-                      d.isNew ? 'baru' : 'diubah',
-                      style: const TextStyle(
+                      d.isNew ? 'new' : 'changed',
+                      style: GoogleFonts.poppins(
                         fontSize: 10,
-                        color: AppColors.red,
+                        color: kCustPink,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
                   ),
                 IconButton(
-                  color: Colors.black54,
-                  tooltip: 'Ubah tanggal',
+                  color: Colors.white70,
+                  tooltip: 'Change date',
                   icon: const Icon(Icons.edit_calendar_outlined, size: 20),
                   onPressed: () => _pickDate(d),
                 ),
                 IconButton(
-                  color: Colors.black54,
-                  tooltip: 'Hapus jadwal',
+                  color: Colors.white70,
+                  tooltip: 'Remove schedule',
                   icon: const Icon(Icons.delete_outline, size: 20),
                   onPressed: () => setState(() {
                     if (d.isNew) {
@@ -1467,8 +1462,14 @@ class _EditCustomerSheetState extends State<_EditCustomerSheet> {
         TextButton.icon(
           onPressed: _salesId == null ? null : _addDraft,
           icon: const Icon(Icons.add_circle_outline, size: 18),
-          label: const Text('Tambah jadwal visit'),
-          style: TextButton.styleFrom(foregroundColor: AppColors.red),
+          label: Text(
+            'Add visit schedule',
+            style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+          ),
+          style: TextButton.styleFrom(
+            foregroundColor: AppColors.white,
+            disabledForegroundColor: Colors.white30,
+          ),
         ),
       ],
     );
@@ -1476,155 +1477,132 @@ class _EditCustomerSheetState extends State<_EditCustomerSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return DefaultTextStyle.merge(
-      style: const TextStyle(color: Colors.black87),
-      child: Padding(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.of(context).viewInsets.bottom,
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.92,
         ),
-        child: ConstrainedBox(
-          constraints: BoxConstraints(
-            maxHeight: MediaQuery.of(context).size.height * 0.92,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const SizedBox(height: 10),
-              Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.black26,
-                  borderRadius: BorderRadius.circular(2),
-                ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 10),
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.white30,
+                borderRadius: BorderRadius.circular(2),
               ),
-              const Padding(
-                padding: EdgeInsets.fromLTRB(20, 14, 20, 8),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    'Edit Customer',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 14, 24, 8),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Edit Customer',
+                  style: GoogleFonts.poppins(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.white,
                   ),
                 ),
               ),
-              Flexible(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _field(
-                          controller: _nameCtrl,
-                          label: 'Nama Toko',
-                          required: true,
-                          maxLength: 150,
-                        ),
-                        _field(
-                          controller: _ownerCtrl,
-                          label: 'Nama Pemilik',
-                          maxLength: 100,
-                        ),
-                        _field(
-                          controller: _phoneCtrl,
-                          label: 'No. Telepon',
-                          maxLength: 20,
-                          keyboardType: TextInputType.phone,
-                          formatters: [FilteringTextInputFormatter.digitsOnly],
-                        ),
-                        _field(
-                          controller: _addressCtrl,
-                          label: 'Alamat',
-                          required: true,
-                          maxLines: 3,
-                          keyboardType: TextInputType.multiline,
-                        ),
-                        _salesDropdown(),
-                        _dayDropdown(),
-                        _field(
-                          controller: _notesCtrl,
-                          label: 'Catatan',
-                          maxLines: 3,
-                          keyboardType: TextInputType.multiline,
-                        ),
-                        const Divider(height: 24),
-                        _visitSection(),
-                        const Divider(height: 24),
-                        Center(
-                          child: TextButton.icon(
-                            onPressed: _saving ? null : _delete,
-                            icon: const Icon(
-                              Icons.delete_forever_outlined,
-                              size: 18,
-                            ),
-                            label: const Text('Hapus Customer'),
-                            style: TextButton.styleFrom(
-                              foregroundColor: AppColors.red,
+            ),
+            Flexible(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(24, 8, 24, 12),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _field(
+                        controller: _nameCtrl,
+                        label: 'Store name',
+                        required: true,
+                        maxLength: 150,
+                      ),
+                      _field(
+                        controller: _ownerCtrl,
+                        label: 'Owner name',
+                        maxLength: 100,
+                      ),
+                      _field(
+                        controller: _phoneCtrl,
+                        label: 'Phone',
+                        maxLength: 20,
+                        keyboardType: TextInputType.phone,
+                        formatters: [FilteringTextInputFormatter.digitsOnly],
+                      ),
+                      _field(
+                        controller: _addressCtrl,
+                        label: 'Address',
+                        required: true,
+                        maxLines: 3,
+                        keyboardType: TextInputType.multiline,
+                      ),
+                      _salesDropdown(),
+                      _dayDropdown(),
+                      _field(
+                        controller: _notesCtrl,
+                        label: 'Notes',
+                        maxLines: 3,
+                        keyboardType: TextInputType.multiline,
+                      ),
+                      const Divider(height: 24, color: Colors.white24),
+                      _visitSection(),
+                      const Divider(height: 24, color: Colors.white24),
+                      Center(
+                        child: TextButton.icon(
+                          onPressed: _saving ? null : _delete,
+                          icon: const Icon(
+                            Icons.delete_forever_outlined,
+                            size: 18,
+                          ),
+                          label: Text(
+                            'Delete customer',
+                            style: GoogleFonts.poppins(
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
+                          style: TextButton.styleFrom(
+                            foregroundColor: kCustPink,
+                          ),
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
-                child: Row(
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 4, 24, 10),
+              child: SafeArea(
+                top: false,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: _saving
-                            ? null
-                            : () => Navigator.of(context).pop(),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.black87,
-                          minimumSize: const Size.fromHeight(46),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        child: const Text('Batal'),
-                      ),
+                    custSaveButton(
+                      onPressed: _saving ? null : _save,
+                      saving: _saving,
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: FilledButton(
-                        onPressed: _saving ? null : _save,
-                        style: FilledButton.styleFrom(
-                          backgroundColor: AppColors.red,
-                          foregroundColor: AppColors.white,
-                          minimumSize: const Size.fromHeight(46),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        child: _saving
-                            ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: AppColors.white,
-                                ),
-                              )
-                            : const Text('Simpan'),
-                      ),
+                    custCancelButton(
+                      _saving ? null : () => Navigator.of(context).pop(),
                     ),
                   ],
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
   }
 }
 
-// ───────────────────────── History order ─────────────────────────
+// ───────────────────────── Order history ─────────────────────────
 
 class _OrderTile extends StatelessWidget {
   const _OrderTile({required this.order, required this.onDetail});
@@ -1637,10 +1615,10 @@ class _OrderTile extends StatelessWidget {
     final date = order.createdAt;
 
     return Material(
-      color: AppColors.white,
-      borderRadius: BorderRadius.circular(20),
+      color: kCustPanel,
+      borderRadius: BorderRadius.circular(16),
       child: InkWell(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(16),
         onTap: onDetail,
         child: Padding(
           padding: const EdgeInsets.all(12),
@@ -1650,11 +1628,11 @@ class _OrderTile extends StatelessWidget {
                 width: 50,
                 height: 54,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF3F3F3),
+                  color: kCustField,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: date == null
-                    ? const Center(child: Text('-'))
+                    ? const Center(child: Text('-', style: TextStyle(color: Colors.white70)))
                     : Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
@@ -1663,7 +1641,7 @@ class _OrderTile extends StatelessWidget {
                             style: const TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.w800,
-                              color: Colors.black,
+                              color: AppColors.white,
                             ),
                           ),
                           Text(
@@ -1673,7 +1651,7 @@ class _OrderTile extends StatelessWidget {
                             style: const TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.w700,
-                              color: Colors.black54,
+                              color: Colors.white70,
                             ),
                           ),
                         ],
@@ -1691,7 +1669,7 @@ class _OrderTile extends StatelessWidget {
                       style: const TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w800,
-                        color: Colors.black,
+                        color: AppColors.white,
                       ),
                     ),
                     const SizedBox(height: 2),
@@ -1699,7 +1677,7 @@ class _OrderTile extends StatelessWidget {
                       date == null ? '-' : _fmtLong(date),
                       style: const TextStyle(
                         fontSize: 12,
-                        color: Colors.black54,
+                        color: Colors.white70,
                       ),
                     ),
                   ],
@@ -1713,7 +1691,7 @@ class _OrderTile extends StatelessWidget {
                 ),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.black38, width: 1.2),
+                  border: Border.all(color: Colors.white38, width: 1.2),
                 ),
                 child: const Row(
                   mainAxisSize: MainAxisSize.min,
@@ -1721,7 +1699,7 @@ class _OrderTile extends StatelessWidget {
                     Icon(
                       Icons.receipt_long_outlined,
                       size: 13,
-                      color: Colors.black54,
+                      color: Colors.white70,
                     ),
                     SizedBox(width: 4),
                     Text(
@@ -1729,7 +1707,7 @@ class _OrderTile extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
-                        color: Colors.black54,
+                        color: Colors.white70,
                       ),
                     ),
                   ],
@@ -1740,13 +1718,13 @@ class _OrderTile extends StatelessWidget {
                 width: 28,
                 height: 28,
                 decoration: const BoxDecoration(
-                  color: Color(0xFFF3F3F3),
+                  color: kCustField,
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
                   Icons.chevron_right,
                   size: 18,
-                  color: Colors.black54,
+                  color: Colors.white70,
                 ),
               ),
             ],
