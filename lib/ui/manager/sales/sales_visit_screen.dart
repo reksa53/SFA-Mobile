@@ -63,7 +63,7 @@ class _SalesVisitScreenState extends State<SalesVisitScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final aktif = TickerMode.of(context);
+    final aktif = TickerMode.valuesOf(context).enabled;
     if (aktif && !_tabAktif && !_loading) _load();
     _tabAktif = aktif;
   }
