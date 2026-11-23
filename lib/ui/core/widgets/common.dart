@@ -362,3 +362,26 @@ Future<DateTime?> pickDate(BuildContext context, DateTime? initial) => showDateP
       firstDate: DateTime(2020),
       lastDate: DateTime(2040),
     );
+
+class ProductThumb extends StatelessWidget {
+  const ProductThumb(this.url, {super.key, this.size = 40});
+
+  final String? url;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    final icon = Icon(Icons.inventory_2_outlined, color: kTextMuted, size: size / 2);
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(size / 4),
+      child: Container(
+        width: size,
+        height: size,
+        color: const Color(0xFFF1F4F8),
+        child: url == null
+            ? icon
+            : Image.network(url!, fit: BoxFit.cover, errorBuilder: (_, _, _) => icon),
+      ),
+    );
+  }
+}

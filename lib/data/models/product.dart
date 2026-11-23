@@ -40,7 +40,6 @@ class Product {
   Product({
 
     this.id, 
-
     required this.sku,
     required this.name,
     this.brand,
@@ -48,6 +47,7 @@ class Product {
     this.unit = 'pcs',
     required this.price,
     this.isActive = true,
+    this.photoUrl, 
     int? stock,
     DateTime? nearestExpiry,
     List<ProductBatch>? batches,
@@ -62,6 +62,7 @@ class Product {
         name: j['name'],
         brand: j['brand'],
         category: j['category'],
+        photoUrl: j['photo_url'],
         unit: j['unit'] ?? 'pcs',
         price: (j['price'] as num).toInt(),
         isActive: j['is_active'] ?? true,
@@ -80,6 +81,7 @@ class Product {
   final String unit;
   final int price; // Rupiah
   final bool isActive;
+  final String? photoUrl; 
   final List<ProductBatch> batches;
   final int? _stock;
   final DateTime? _nearestExpiry;

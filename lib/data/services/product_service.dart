@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../models/product.dart';
 import 'api_client.dart';
@@ -19,7 +20,9 @@ class ProductService extends ChangeNotifier {
 
   List<String> categoriesFor(Iterable<String> brands) => brands.isEmpty
       ? categories
-      : _distinct(active.where((p) => brands.contains(p.brand)).map((p) => p.category));
+      : _distinct(
+          active.where((p) => brands.contains(p.brand)).map((p) => p.category),
+        );
 
   // shortcut: ambil semua halaman sekaligus, cukup untuk ratusan produk; ganti ke infinite scroll bila ribuan
   Future<void> load() async {
@@ -31,12 +34,17 @@ class ProductService extends ChangeNotifier {
       var page = 1;
       int last;
       do {
-        final res = await ApiClient.instance.dio.get('/products', queryParameters: {'page': page});
-        items.addAll((res.data['data'] as List).map((j) => Product.fromJson(j)));
+        final res = await ApiClient.instance.dio.get(
+          '/products',
+          queryParameters: {'page': page},
+        );
+        items.addAll(
+          (res.data['data'] as List).map((j) => Product.fromJson(j)),
+        );
         last = res.data['meta']['last_page'];
       } while (page++ < last);
       _items = items;
-     } on DioException catch (e) {
+    } on DioException catch (e) {
       debugPrint('GET /products gagal: ${e.response?.statusCode} ${e.message}');
       error = e.response == null
           ? 'Tidak bisa terhubung ke server'
@@ -66,7 +74,10 @@ class ProductService extends ChangeNotifier {
   String? canon(String? value, List<String> existing) {
     final v = value?.trim() ?? '';
     if (v.isEmpty) return null;
-    return existing.firstWhere((e) => e.toLowerCase() == v.toLowerCase(), orElse: () => v);
+    return existing.firstWhere(
+      (e) => e.toLowerCase() == v.toLowerCase(),
+      orElse: () => v,
+    );
   }
 
   void add(Product p) {
@@ -75,39 +86,79 @@ class ProductService extends ChangeNotifier {
   }
 
   // produk terbaru dari daftar, supaya layar detail ikut berubah
-Product current(Product p) =>
-    _items.firstWhere((x) => x.id != null && x.id == p.id, orElse: () => p);
+  Product current(Product p) =>
+      _items.firstWhere((x) => x.id != null && x.id == p.id, orElse: () => p);
 
-// ambil detail (dengan batch) lalu simpan ke daftar
-Future<void> loadDetail(Product p) async {
-  if (p.id == null) return;
-  try {
-    _replace(await fetch(p.id!));
-  } catch (_) {} // gagal: tetap tampilkan data dari list
-}
-
-void _replace(Product fresh) {
-  final i = _items.indexWhere((x) => x.id == fresh.id);
-  if (i >= 0) _items[i] = fresh;
-  notifyListeners();
-}
-
-// kirim ke server; balasannya produk lengkap (stok dan batch terbaru)
-Future<void> addBatch(Product p, ProductBatch b) async {
-  if (p.id == null) { // produk lokal, belum ada di server
-    p.batches.add(b);
-    notifyListeners();
-    return;
+  // ambil detail (dengan batch) lalu simpan ke daftar
+  Future<void> loadDetail(Product p) async {
+    if (p.id == null) return;
+    try {
+      _replace(await fetch(p.id!));
+    } catch (_) {} // gagal: tetap tampilkan data dari list
   }
-  final res = await ApiClient.instance.dio.post('/products/${p.id}/batches', data: {
-    'batch_number': b.number,
-    'expiry_date': b.expiry?.toIso8601String().substring(0, 10),
-    'quantity': b.initialQty,
-    'received_at': b.receivedAt.toIso8601String().substring(0, 10),
-  });
-  _replace(Product.fromJson(res.data['data']));
-}
+
+  void _replace(Product fresh) {
+    final i = _items.indexWhere((x) => x.id == fresh.id);
+    if (i >= 0) _items[i] = fresh;
+    notifyListeners();
+  }
+
+  // kirim ke server; balasannya produk lengkap (stok dan batch terbaru)
+  Future<void> addBatch(Product p, ProductBatch b) async {
+    if (p.id == null) {
+      // produk lokal, belum ada di server
+      p.batches.add(b);
+      notifyListeners();
+      return;
+    }
+    final res = await ApiClient.instance.dio.post(
+      '/products/${p.id}/batches',
+      data: {
+        'batch_number': b.number,
+        'expiry_date': b.expiry?.toIso8601String().substring(0, 10),
+        'quantity': b.initialQty,
+        'received_at': b.receivedAt.toIso8601String().substring(0, 10),
+      },
+    );
+    _replace(Product.fromJson(res.data['data']));
+  }
 
   static List<String> _distinct(Iterable<String?> v) =>
       v.whereType<String>().toSet().toList()..sort();
+
+  String _d(DateTime d) => d.toIso8601String().substring(0, 10);
+
+Future<void> create({
+  required String sku,
+  required String name,
+  String? brand,
+  String? category,
+  required String unit,
+  required int price,
+  required bool active,
+  required String batchNumber,
+  DateTime? expiry,
+  required int qty,
+  required DateTime received,
+  XFile? photo,
+}) async {
+  final form = FormData.fromMap({
+    'sku': sku,
+    'name': name,
+    if (brand != null) 'brand': brand,
+    if (category != null) 'category': category,
+    'unit': unit,
+    'price': price,
+    'is_active': active ? 1 : 0,
+    'batch[batch_number]': batchNumber,
+    if (expiry != null) 'batch[expiry_date]': _d(expiry),
+    'batch[quantity]': qty,
+    'batch[received_at]': _d(received),
+    if (photo != null) 'photo': await MultipartFile.fromFile(photo.path, filename: photo.name),
+  });
+  final res = await ApiClient.instance.dio.post('/products', data: form);
+  _items.add(Product.fromJson(res.data['data']));
+  notifyListeners();
 }
+}
+
