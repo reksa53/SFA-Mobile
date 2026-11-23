@@ -264,19 +264,11 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  custSaveButton(
-                    onPressed: _saving ? null : _submit,
-                    saving: _saving,
-                  ),
-                  custCancelButton(
-                    _saving ? null : () => Navigator.of(context).pop(),
-                  ),
-                ],
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
+              child: custActionBar(
+                onSave: _saving ? null : _submit,
+                onCancel: _saving ? null : () => Navigator.of(context).pop(),
+                saving: _saving,
               ),
             ),
           ],
