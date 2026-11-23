@@ -46,7 +46,7 @@ class _SalesVisitScreenState extends State<SalesVisitScreen> {
     final now = DateTime.now();
     _month = DateTime(now.year, now.month);
     _load();
-        ApiClient.instance.getName().then((n) {
+        ApiClient.instance.getName ().then((n) {
       if (mounted && n != null) setState(() => _nama = n);
     });
   }

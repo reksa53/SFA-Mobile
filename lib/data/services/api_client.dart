@@ -10,6 +10,7 @@ class ApiClient {
   static const _tokenKey = 'token';
   static const _roleKey = 'role';
   static const _nameKey = 'name';
+  static const _emailKey = 'email';
   final _storage = const FlutterSecureStorage();
 
   late final Dio dio =
@@ -34,22 +35,37 @@ class ApiClient {
               // Token kedaluwarsa/tidak valid (selain saat login itu sendiri)
               if (e.response?.statusCode == 401 &&
                   e.requestOptions.path != '/login') {
-                await _storage.delete(key: _tokenKey);
-                await _storage.delete(key: _roleKey);
-                await _storage.delete(key: _nameKey);
+                await _clearSession();
               }
               handler.next(e);
             },
           ),
         );
 
+  Future<void> _clearSession() async {
+    for (final key in [_tokenKey, _roleKey, _nameKey, _emailKey]) {
+      await _storage.delete(key: key);
+    }
+  }
+
   Future<bool> hasToken() async =>
       (await _storage.read(key: _tokenKey)) != null;
 
   Future<String?> getRole() => _storage.read(key: _roleKey);
+
   Future<String?> getName() => _storage.read(key: _nameKey);
 
-  /// Login, simpan token dan role, lalu kembalikan role ('manager' / 'sales').
+  /// Profil akun yang sedang login (disimpan saat login).
+  Future<({String name, String email, String role})> getProfile() async {
+    return (
+      name: await _storage.read(key: _nameKey) ?? '',
+      email: await _storage.read(key: _emailKey) ?? '',
+      role: await _storage.read(key: _roleKey) ?? '',
+    );
+  }
+
+  /// Login, simpan token, role, nama, dan email, lalu kembalikan role
+  /// ('manager' / 'sales').
   Future<String> login(String email, String password) async {
     final res = await dio.post(
       '/login',
@@ -60,17 +76,16 @@ class ApiClient {
     if (token is! String || token.isEmpty) {
       throw Exception('Token tidak ditemukan di response');
     }
-    final role = res.data['data']?['role'];
+    final user = res.data['data'];
+    final role = user?['role'];
     if (role is! String || role.isEmpty) {
       throw Exception('Role tidak ditemukan di response');
     }
 
     await _storage.write(key: _tokenKey, value: token);
     await _storage.write(key: _roleKey, value: role);
-        final nama = res.data['data']?['name'];
-    if (nama is String && nama.isNotEmpty) {
-      await _storage.write(key: _nameKey, value: nama);
-    }
+    await _storage.write(key: _nameKey, value: '${user['name'] ?? ''}');
+    await _storage.write(key: _emailKey, value: '${user['email'] ?? ''}');
     return role;
   }
 
@@ -78,8 +93,6 @@ class ApiClient {
     try {
       await dio.post('/logout');
     } catch (_) {}
-    await _storage.delete(key: _tokenKey);
-    await _storage.delete(key: _roleKey);
-    await _storage.delete(key: _nameKey);
+    await _clearSession();
   }
 }
