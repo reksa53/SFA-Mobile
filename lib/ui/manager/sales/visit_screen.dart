@@ -9,6 +9,7 @@ import '../../../data/services/sales_service.dart';
 import '../../../utils/date_id.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/manager_colors.dart';
+import '../../core/widgets/photo_picker_sheet.dart';
 import 'edit_visit_screen.dart';
 import 'sales_avatar.dart';
 import 'visit_calendar.dart';
@@ -41,10 +42,13 @@ class _VisitScreenState extends State<VisitScreen> {
   List<Visit> _visits = const [];
   bool _loading = true;
   bool _failed = false;
+  late Sales _sales;
+  bool _savingPhoto = false;
 
   @override
   void initState() {
     super.initState();
+    _sales = widget.sales;
     final now = DateTime.now();
     _month = DateTime(now.year, now.month);
     _load();
@@ -157,7 +161,7 @@ class _VisitScreenState extends State<VisitScreen> {
     final hasil = await Navigator.of(context).push<List<Visit>>(
       MaterialPageRoute(
         builder: (_) => EditVisitScreen(
-          sales: widget.sales,
+          sales: _sales,
           visits: _visits,
           toko: toko,
         ),
@@ -179,6 +183,34 @@ class _VisitScreenState extends State<VisitScreen> {
       if (!mounted) return;
       _pesan(_pesanError(e, 'Failed to save schedule'));
       _load(); // sinkronkan lagi dengan isi server
+    }
+  }
+
+  /// Ganti atau hapus foto sales ini (ketuk avatar di pojok kanan atas).
+  Future<void> _changePhoto() async {
+    final choice = await choosePhoto(
+      context,
+      canRemove: (_sales.fotoUrl ?? '').isNotEmpty,
+    );
+    if (choice == null || !mounted) return;
+
+    setState(() => _savingPhoto = true);
+    try {
+      final url = await SalesService().updatePhoto(
+        _sales.id,
+        bytes: choice.bytes,
+        remove: choice.remove,
+      );
+      if (!mounted) return;
+      setState(() {
+        _sales = Sales(id: _sales.id, nama: _sales.nama, fotoUrl: url);
+      });
+      _pesan(choice.remove ? 'Photo removed' : 'Photo updated');
+    } catch (e) {
+      if (!mounted) return;
+      _pesan(_pesanError(e, 'Failed to update photo'));
+    } finally {
+      if (mounted) setState(() => _savingPhoto = false);
     }
   }
 
@@ -257,7 +289,12 @@ class _VisitScreenState extends State<VisitScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            _Header(sales: widget.sales, onDelete: _hapusSales),
+            _Header(
+              sales: _sales,
+              busy: _savingPhoto,
+              onEditPhoto: _changePhoto,
+              onDelete: _hapusSales,
+            ),
             Expanded(child: _buildBody()),
             Padding(
               padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
@@ -664,9 +701,16 @@ class _VisitInfoSheet extends StatelessWidget {
 }
 
 class _Header extends StatelessWidget {
-  const _Header({required this.sales, required this.onDelete});
+  const _Header({
+    required this.sales,
+    required this.busy,
+    required this.onEditPhoto,
+    required this.onDelete,
+  });
 
   final Sales sales;
+  final bool busy;
+  final VoidCallback onEditPhoto;
   final VoidCallback onDelete;
 
   @override
@@ -713,7 +757,46 @@ class _Header extends StatelessWidget {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    SalesAvatar(sales: sales, size: 36),
+                    // Ketuk avatar untuk ganti / hapus foto.
+                    InkWell(
+                      customBorder: const CircleBorder(),
+                      onTap: busy ? null : onEditPhoto,
+                      child: Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          SalesAvatar(sales: sales, size: 36),
+                          Positioned(
+                            right: -3,
+                            bottom: -3,
+                            child: Container(
+                              width: 17,
+                              height: 17,
+                              decoration: BoxDecoration(
+                                color: AppColors.red,
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: AppColors.background,
+                                  width: 1.5,
+                                ),
+                              ),
+                              child: busy
+                                  ? const Padding(
+                                      padding: EdgeInsets.all(3.5),
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 1.5,
+                                        color: AppColors.white,
+                                      ),
+                                    )
+                                  : const Icon(
+                                      Icons.camera_alt,
+                                      size: 9,
+                                      color: AppColors.white,
+                                    ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                     const SizedBox(width: 8),
                     Flexible(
                       child: Text(
