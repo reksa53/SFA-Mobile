@@ -1,6 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-
+import 'package:flutter/foundation.dart';
 import '../../config/api_config.dart';
 
 class ApiClient {
@@ -40,7 +40,15 @@ class ApiClient {
               handler.next(e);
             },
           ),
-        );
+            )
+    ..interceptors.add(
+      LogInterceptor(
+        requestHeader: true,
+        responseBody: true,
+        error: true,
+        logPrint: (o) => debugPrint('[API] $o'),
+      ),
+    );
 
   Future<void> _clearSession() async {
     for (final key in [_tokenKey, _roleKey, _nameKey, _emailKey]) {

@@ -201,7 +201,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                         ),
                         Switch(
                           value: _active,
-                          activeColor: AppColors.white,
+                          activeThumbColor: AppColors.white,
                           activeTrackColor: AppColors.red,
                           onChanged: (v) => setState(() => _active = v),
                         ),
