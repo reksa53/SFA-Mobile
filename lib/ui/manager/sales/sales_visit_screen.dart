@@ -145,8 +145,8 @@ class _SalesVisitScreenState extends State<SalesVisitScreen> {
     return _sales.where((s) => s.nama.toLowerCase().contains(q)).toList();
   }
 
-  void _open(Sales sales) {
-    Navigator.of(context).push(
+  Future<void> _open(Sales sales) async {
+    await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => VisitScreen(
           sales: sales,
@@ -156,6 +156,8 @@ class _SalesVisitScreenState extends State<SalesVisitScreen> {
         ),
       ),
     );
+    // Muat ulang: foto sales bisa berubah (atau sales dihapus) di layar Visit.
+    if (mounted) _load();
   }
 
   Future<void> _addSales() async {

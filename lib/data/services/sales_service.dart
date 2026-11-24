@@ -50,6 +50,22 @@ class SalesService {
     );
   }
 
+  /// Ganti atau hapus foto sales (POST /sales/{id}/photo, khusus manager).
+  /// Mengembalikan alamat foto baru, atau null kalau fotonya dihapus.
+  Future<String?> updatePhoto(
+    int id, {
+    Uint8List? bytes,
+    bool remove = false,
+  }) async {
+    final form = FormData.fromMap({
+      if (remove) 'remove': '1',
+      if (bytes != null)
+        'photo': MultipartFile.fromBytes(bytes, filename: 'photo.jpg'),
+    });
+    final res = await _dio.post('/sales/$id/photo', data: form);
+    return res.data['data']['photo_url'] as String?;
+  }
+
   /// Hapus (nonaktifkan) sales (DELETE /sales/{id}, khusus manager).
   Future<void> delete(int id) async {
     await _dio.delete('/sales/$id');

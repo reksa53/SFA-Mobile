@@ -1,9 +1,11 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:sfa_mobile/data/services/api_client.dart';
 import 'package:sfa_mobile/ui/auth/views/login_screen.dart';
 
 import '../theme/app_colors.dart';
+import 'photo_picker_sheet.dart';
 
 /// Tab "Account": info singkat dan tombol logout. Dipakai Manager dan Sales.
 class AccountPage extends StatefulWidget {
@@ -16,10 +18,15 @@ class AccountPage extends StatefulWidget {
 class _AccountPageState extends State<AccountPage> {
   String? _role;
   bool _loggingOut = false;
+  String? _photoUrl;
+  bool _savingPhoto = false;
 
   @override
   void initState() {
     super.initState();
+    ApiClient.instance.getPhotoUrl().then((u) {
+      if (mounted) setState(() => _photoUrl = u);
+    });
     ApiClient.instance.getRole().then((r) {
       if (mounted) setState(() => _role = r);
     });
@@ -30,6 +37,40 @@ class _AccountPageState extends State<AccountPage> {
     'sales' => 'Sales',
     _ => '-',
   };
+
+  /// Ganti atau hapus foto profil akun sendiri (ketuk avatar).
+  Future<void> _changePhoto() async {
+    final choice = await choosePhoto(context, canRemove: _photoUrl != null);
+    if (choice == null || !mounted) return;
+
+    setState(() => _savingPhoto = true);
+    String message;
+    try {
+      final url = await ApiClient.instance.updateMyPhoto(
+        bytes: choice.bytes,
+        remove: choice.remove,
+      );
+      if (!mounted) return;
+      setState(() => _photoUrl = url);
+      message = choice.remove ? 'Photo removed' : 'Photo updated';
+    } catch (e) {
+      message = 'Failed to update photo';
+      if (e is DioException) {
+        final data = e.response?.data;
+        if (e.response == null) {
+          message = 'Cannot reach the server';
+        } else if (data is Map &&
+            data['errors'] is Map &&
+            (data['errors'] as Map).isNotEmpty) {
+          final first = (data['errors'] as Map).values.first;
+          if (first is List && first.isNotEmpty) message = first.first.toString();
+        }
+      }
+    }
+    if (!mounted) return;
+    setState(() => _savingPhoto = false);
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  }
 
   Future<void> _confirmLogout() async {
     final yakin = await showDialog<bool>(
@@ -123,22 +164,10 @@ class _AccountPageState extends State<AccountPage> {
                   padding: const EdgeInsets.all(20),
                   child: Row(
                     children: [
-                      Container(
-                        width: 64,
-                        height: 64,
-                        decoration: const BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            colors: [Color(0xFFB7D6F0), Color(0xFF8FBAE0)],
-                          ),
-                        ),
-                        child: const Icon(
-                          Icons.person,
-                          size: 32,
-                          color: Color(0xFF222222),
-                        ),
+                      _EditableAvatar(
+                        photoUrl: _photoUrl,
+                        busy: _savingPhoto,
+                        onTap: _savingPhoto ? null : _changePhoto,
                       ),
                       const SizedBox(width: 16),
                       Expanded(
@@ -234,6 +263,98 @@ class _AccountPageState extends State<AccountPage> {
                     fontSize: 12,
                     color: Colors.white38,
                   ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Avatar 64px di kartu profil: foto kalau ada, kalau tidak ikon orang.
+/// Ada lencana kamera kecil; ketuk untuk ganti / hapus foto.
+class _EditableAvatar extends StatelessWidget {
+  const _EditableAvatar({
+    required this.photoUrl,
+    required this.busy,
+    required this.onTap,
+  });
+
+  final String? photoUrl;
+  final bool busy;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final fallback = Container(
+      width: 64,
+      height: 64,
+      decoration: const BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFFB7D6F0), Color(0xFF8FBAE0)],
+        ),
+      ),
+      child: const Icon(Icons.person, size: 32, color: Color(0xFF222222)),
+    );
+    final url = photoUrl;
+    final avatar = url == null
+        ? fallback
+        : ClipOval(
+            child: Image.network(
+              url,
+              width: 64,
+              height: 64,
+              fit: BoxFit.cover,
+              errorBuilder: (_, _, _) => fallback,
+            ),
+          );
+
+    return InkWell(
+      customBorder: const CircleBorder(),
+      onTap: onTap,
+      child: SizedBox(
+        width: 64,
+        height: 64,
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Positioned.fill(child: avatar),
+            if (busy)
+              const Positioned.fill(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Color(0x66000000),
+                  ),
+                  child: Padding(
+                    padding: EdgeInsets.all(20),
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.5,
+                      color: AppColors.white,
+                    ),
+                  ),
+                ),
+              ),
+            Positioned(
+              right: -2,
+              bottom: -2,
+              child: Container(
+                width: 24,
+                height: 24,
+                decoration: BoxDecoration(
+                  color: AppColors.red,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: AppColors.white, width: 2),
+                ),
+                child: const Icon(
+                  Icons.camera_alt,
+                  size: 12,
+                  color: AppColors.white,
                 ),
               ),
             ),

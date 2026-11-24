@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:sfa_mobile/data/services/api_client.dart';
@@ -5,6 +6,7 @@ import 'package:sfa_mobile/ui/auth/views/login_screen.dart';
 
 import '../theme/app_colors.dart';
 import '../theme/app_theme.dart';
+import 'photo_picker_sheet.dart';
 
 /// Membuka sidebar dari kiri.
 ///
@@ -48,6 +50,8 @@ class _DrawerPanel extends StatefulWidget {
 
 class _DrawerPanelState extends State<_DrawerPanel> {
   ({String name, String email, String role})? _profile;
+  String? _photoUrl;
+  bool _savingPhoto = false;
 
   @override
   void initState() {
@@ -55,6 +59,45 @@ class _DrawerPanelState extends State<_DrawerPanel> {
     ApiClient.instance.getProfile().then((p) {
       if (mounted) setState(() => _profile = p);
     });
+    ApiClient.instance.getPhotoUrl().then((u) {
+      if (mounted) setState(() => _photoUrl = u);
+    });
+  }
+
+  /// Ganti atau hapus foto profil sendiri (ketuk avatar).
+  Future<void> _changePhoto() async {
+    final choice = await choosePhoto(context, canRemove: _photoUrl != null);
+    if (choice == null || !mounted) return;
+
+    setState(() => _savingPhoto = true);
+    String message;
+    try {
+      final url = await ApiClient.instance.updateMyPhoto(
+        bytes: choice.bytes,
+        remove: choice.remove,
+      );
+      if (!mounted) return;
+      setState(() => _photoUrl = url);
+      message = choice.remove ? 'Photo removed' : 'Photo updated';
+    } catch (e) {
+      message = 'Failed to update photo';
+      if (e is DioException) {
+        final data = e.response?.data;
+        if (e.response == null) {
+          message = 'Cannot reach the server';
+        } else if (data is Map &&
+            data['errors'] is Map &&
+            (data['errors'] as Map).isNotEmpty) {
+          final first = (data['errors'] as Map).values.first;
+          if (first is List && first.isNotEmpty) {
+            message = first.first.toString();
+          }
+        }
+      }
+    }
+    if (!mounted) return;
+    setState(() => _savingPhoto = false);
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 
   Future<void> _logout() async {
@@ -138,17 +181,11 @@ class _DrawerPanelState extends State<_DrawerPanel> {
                       ),
                       child: Row(
                         children: [
-                          CircleAvatar(
-                            radius: 26,
-                            backgroundColor: const Color(0xFFE9C46A),
-                            child: Text(
-                              _initials(profile?.name ?? ''),
-                              style: GoogleFonts.poppins(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.black,
-                              ),
-                            ),
+                          _ProfileAvatar(
+                            name: profile?.name ?? '',
+                            photoUrl: _photoUrl,
+                            busy: _savingPhoto,
+                            onTap: _savingPhoto ? null : _changePhoto,
                           ),
                           const SizedBox(width: 12),
                           Expanded(
@@ -236,6 +273,109 @@ class _DrawerPanelState extends State<_DrawerPanel> {
               ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Foto profil bulat; kalau tidak ada / gagal dimuat, tampil huruf awal nama.
+class _ProfileAvatar extends StatelessWidget {
+  const _ProfileAvatar({
+    required this.name,
+    required this.photoUrl,
+    required this.busy,
+    required this.onTap,
+  });
+
+  final String name;
+  final String? photoUrl;
+  final bool busy;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    const size = 52.0;
+    final initials = Container(
+      width: size,
+      height: size,
+      alignment: Alignment.center,
+      decoration: const BoxDecoration(
+        shape: BoxShape.circle,
+        color: Color(0xFFE9C46A),
+      ),
+      child: Text(
+        _initials(name),
+        style: GoogleFonts.poppins(
+          fontSize: 18,
+          fontWeight: FontWeight.w700,
+          color: Colors.black,
+        ),
+      ),
+    );
+
+    final url = photoUrl;
+    final Widget avatar = (url == null || url.isEmpty)
+        ? initials
+        : ClipOval(
+            child: SizedBox(
+              width: size,
+              height: size,
+              child: Image.network(
+                url,
+                fit: BoxFit.cover,
+                errorBuilder: (_, _, _) => initials,
+              ),
+            ),
+          );
+
+    // Ketuk avatar untuk ganti / hapus foto (ada lencana kamera kecil).
+    return InkWell(
+      customBorder: const CircleBorder(),
+      onTap: onTap,
+      child: SizedBox(
+        width: size,
+        height: size,
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Positioned.fill(child: avatar),
+            if (busy)
+              const Positioned.fill(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Color(0x66000000),
+                  ),
+                  child: Padding(
+                    padding: EdgeInsets.all(16),
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.5,
+                      color: AppColors.white,
+                    ),
+                  ),
+                ),
+              ),
+            Positioned(
+              right: -2,
+              bottom: -2,
+              child: Container(
+                width: 22,
+                height: 22,
+                decoration: BoxDecoration(
+                  color: AppColors.red,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: p.bg, width: 2),
+                ),
+                child: const Icon(
+                  Icons.camera_alt,
+                  size: 11,
+                  color: AppColors.white,
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

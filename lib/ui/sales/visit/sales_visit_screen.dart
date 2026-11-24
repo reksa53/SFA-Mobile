@@ -38,7 +38,8 @@ class _SalesVisitScreenState extends State<SalesVisitScreen> {
   List<Visit> _visits = const [];
   bool _loading = true;
   bool _failed = false;
-    String? _nama;
+  String? _nama;
+  String? _photoUrl;
 
   @override
   void initState() {
@@ -46,8 +47,11 @@ class _SalesVisitScreenState extends State<SalesVisitScreen> {
     final now = DateTime.now();
     _month = DateTime(now.year, now.month);
     _load();
-        ApiClient.instance.getName ().then((n) {
+    ApiClient.instance.getName().then((n) {
       if (mounted && n != null) setState(() => _nama = n);
+    });
+    ApiClient.instance.getPhotoUrl().then((u) {
+      if (mounted) setState(() => _photoUrl = u);
     });
   }
 
@@ -60,6 +64,12 @@ class _SalesVisitScreenState extends State<SalesVisitScreen> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     final aktif = TickerMode.valuesOf(context).enabled;
+    if (aktif && !_tabAktif) {
+      // Foto bisa berubah di tab Account, jadi baca ulang saat tab ini dibuka.
+      ApiClient.instance.getPhotoUrl().then((u) {
+        if (mounted) setState(() => _photoUrl = u);
+      });
+    }
     if (aktif && !_tabAktif && !_loading) _load();
     _tabAktif = aktif;
   }
@@ -193,12 +203,9 @@ class _SalesVisitScreenState extends State<SalesVisitScreen> {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            SalesAvatar(
-                              sales: Sales(
-                                id: 0,
-                                nama: _nama ?? widget.salesName,
-                              ),
-                              size: 36,
+                            _ChipAvatar(
+                              name: _nama ?? widget.salesName,
+                              photoUrl: _photoUrl,
                             ),
                             const SizedBox(width: 8),
                             Flexible(
@@ -415,6 +422,33 @@ class _SalesVisitScreenState extends State<SalesVisitScreen> {
 
   /// Tinggi maksimal kotak: 3 baris (tiap baris 78 px) + 2 garis + padding.
   static const double _tinggiMaks = 4 * 78 + 3 + 8;
+}
+
+/// Avatar bulat di chip nama: foto profil kalau ada, kalau tidak (atau gagal
+/// dimuat) tampil inisial seperti biasa.
+class _ChipAvatar extends StatelessWidget {
+  const _ChipAvatar({required this.name, required this.photoUrl});
+
+  final String name;
+  final String? photoUrl;
+
+  @override
+  Widget build(BuildContext context) {
+    final fallback = SalesAvatar(sales: Sales(id: 0, nama: name), size: 36);
+    final url = photoUrl;
+    if (url == null) return fallback;
+    return ClipOval(
+      child: Image.network(
+        url,
+        width: 36,
+        height: 36,
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => fallback,
+        loadingBuilder: (_, child, progress) =>
+            progress == null ? child : fallback,
+      ),
+    );
+  }
 }
 
 class _VisitRow extends StatelessWidget {
