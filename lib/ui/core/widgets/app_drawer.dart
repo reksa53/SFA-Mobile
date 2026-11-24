@@ -4,6 +4,7 @@ import 'package:sfa_mobile/data/services/api_client.dart';
 import 'package:sfa_mobile/ui/auth/views/login_screen.dart';
 
 import '../theme/app_colors.dart';
+import '../theme/app_theme.dart';
 
 /// Membuka sidebar dari kiri.
 ///
@@ -58,24 +59,25 @@ class _DrawerPanelState extends State<_DrawerPanel> {
 
   Future<void> _logout() async {
     final navigator = Navigator.of(context, rootNavigator: true);
+    final p = context.palette;
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.white,
+        backgroundColor: p.surface,
         surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text(
+        title: Text(
           'Keluar dari akun?',
-          style: TextStyle(fontWeight: FontWeight.w800, color: Colors.black),
+          style: TextStyle(fontWeight: FontWeight.w800, color: p.onSurface),
         ),
-        content: const Text(
+        content: Text(
           'Kamu harus login lagi untuk memakai aplikasi.',
-          style: TextStyle(color: Colors.black87),
+          style: TextStyle(color: p.onSurface),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            style: TextButton.styleFrom(foregroundColor: Colors.black87),
+            style: TextButton.styleFrom(foregroundColor: p.onSurface),
             child: const Text('Batal'),
           ),
           FilledButton(
@@ -98,129 +100,139 @@ class _DrawerPanelState extends State<_DrawerPanel> {
 
   @override
   Widget build(BuildContext context) {
+    final p = context.palette;
     final screenWidth = MediaQuery.of(context).size.width;
     final width = screenWidth * 0.82 > 320 ? 320.0 : screenWidth * 0.82;
-    final p = _profile;
-    final roleLabel = switch (p?.role) {
+    final profile = _profile;
+    final roleLabel = switch (profile?.role) {
       'manager' => 'Manager',
       'sales' => 'Sales',
       _ => '-',
     };
 
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: Material(
-        color: AppColors.background,
-        borderRadius: const BorderRadius.horizontal(right: Radius.circular(24)),
-        clipBehavior: Clip.antiAlias,
-        child: SizedBox(
-          width: width,
-          height: double.infinity,
-          child: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Kartu profil
-                  Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: const Color(0x14FFFFFF),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: Colors.white10),
-                    ),
-                    child: Row(
-                      children: [
-                        CircleAvatar(
-                          radius: 26,
-                          backgroundColor: const Color(0xFFE9C46A),
-                          child: Text(
-                            _initials(p?.name ?? ''),
-                            style: GoogleFonts.poppins(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.black,
+    return ThemedPage(
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: Material(
+          color: p.bg,
+          borderRadius: const BorderRadius.horizontal(
+            right: Radius.circular(24),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: SizedBox(
+            width: width,
+            height: double.infinity,
+            child: SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Kartu profil
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: p.glass,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: p.glassBorder),
+                      ),
+                      child: Row(
+                        children: [
+                          CircleAvatar(
+                            radius: 26,
+                            backgroundColor: const Color(0xFFE9C46A),
+                            child: Text(
+                              _initials(profile?.name ?? ''),
+                              style: GoogleFonts.poppins(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.black,
+                              ),
                             ),
                           ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                (p == null || p.name.isEmpty) ? '-' : p.name,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: GoogleFonts.poppins(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.white,
-                                ),
-                              ),
-                              Text(
-                                (p == null || p.email.isEmpty) ? '-' : p.email,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: GoogleFonts.poppins(
-                                  fontSize: 11.5,
-                                  color: Colors.white60,
-                                ),
-                              ),
-                              const SizedBox(height: 6),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 3,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: AppColors.red,
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Text(
-                                  roleLabel,
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  (profile == null || profile.name.isEmpty)
+                                      ? '-'
+                                      : profile.name,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                   style: GoogleFonts.poppins(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w600,
-                                    color: AppColors.white,
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w700,
+                                    color: p.text,
                                   ),
                                 ),
-                              ),
-                            ],
+                                Text(
+                                  (profile == null || profile.email.isEmpty)
+                                      ? '-'
+                                      : profile.email,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 11.5,
+                                    color: p.textFaint,
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 3,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.red,
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Text(
+                                    roleLabel,
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.white,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Tema: belum aktif di fase ini.
-                  Opacity(
-                    opacity: 0.55,
-                    child: _DrawerTile(
-                      icon: Icons.dark_mode_outlined,
-                      title: 'Tema',
-                      subtitle: 'Mode terang segera hadir',
-                      trailing: Text(
-                        'Gelap',
-                        style: GoogleFonts.poppins(
-                          fontSize: 12,
-                          color: Colors.white70,
-                        ),
+                        ],
                       ),
                     ),
-                  ),
+                    const SizedBox(height: 20),
 
-                  const Spacer(),
-                  const Divider(color: Colors.white12),
-                  _DrawerTile(
-                    icon: Icons.logout,
-                    title: 'Logout',
-                    color: const Color(0xFFFF6B6B),
-                    onTap: _logout,
-                  ),
-                ],
+                    // Mode terang / gelap
+                    _DrawerTile(
+                      icon: p.isDark
+                          ? Icons.dark_mode_outlined
+                          : Icons.light_mode_outlined,
+                      title: 'Mode terang',
+                      subtitle: 'Beta: sebagian layar belum mengikuti',
+                      trailing: Switch(
+                        value: !p.isDark,
+                        onChanged: (v) => ThemeController.instance.setDark(!v),
+                        activeThumbColor: AppColors.white,
+                        activeTrackColor: AppColors.red,
+                      ),
+                      onTap: () => ThemeController.instance.setDark(!p.isDark),
+                    ),
+
+                    const Spacer(),
+                    Divider(color: p.glassBorder),
+                    _DrawerTile(
+                      icon: Icons.logout,
+                      title: 'Logout',
+                      color: p.isDark
+                          ? const Color(0xFFFF6B6B)
+                          : const Color(0xFFD32F2F),
+                      onTap: _logout,
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -237,7 +249,7 @@ class _DrawerTile extends StatelessWidget {
     this.subtitle,
     this.trailing,
     this.onTap,
-    this.color = AppColors.white,
+    this.color,
   });
 
   final IconData icon;
@@ -245,10 +257,15 @@ class _DrawerTile extends StatelessWidget {
   final String? subtitle;
   final Widget? trailing;
   final VoidCallback? onTap;
-  final Color color;
+
+  /// Null = warna teks tema.
+  final Color? color;
 
   @override
   Widget build(BuildContext context) {
+    final p = context.palette;
+    final c = color ?? p.text;
+
     return InkWell(
       borderRadius: BorderRadius.circular(14),
       onTap: onTap,
@@ -256,7 +273,7 @@ class _DrawerTile extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
         child: Row(
           children: [
-            Icon(icon, color: color, size: 22),
+            Icon(icon, color: c, size: 22),
             const SizedBox(width: 14),
             Expanded(
               child: Column(
@@ -267,7 +284,7 @@ class _DrawerTile extends StatelessWidget {
                     style: GoogleFonts.poppins(
                       fontSize: 14.5,
                       fontWeight: FontWeight.w600,
-                      color: color,
+                      color: c,
                     ),
                   ),
                   if (subtitle != null)
@@ -275,7 +292,7 @@ class _DrawerTile extends StatelessWidget {
                       subtitle!,
                       style: GoogleFonts.poppins(
                         fontSize: 11,
-                        color: Colors.white54,
+                        color: p.textFaint,
                       ),
                     ),
                 ],

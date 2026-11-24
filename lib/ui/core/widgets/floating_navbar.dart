@@ -1,7 +1,10 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../theme/app_colors.dart';
+import '../theme/app_text_styles.dart';
+import '../theme/app_theme.dart';
 
 class NavItem {
   const NavItem({required this.label, required this.icon});
@@ -10,9 +13,7 @@ class NavItem {
   final IconData icon;
 }
 
-/// Navbar melayang: bar gelap solid, tab aktif melebar menjadi pil merah
-/// berisi ikon + label, tab lain hanya ikon. Daftar tab diberikan shell tiap
-/// role.
+/// Navbar melayang bergaya kaca. Daftar tab diberikan shell tiap role.
 class FloatingNavBar extends StatelessWidget {
   const FloatingNavBar({
     super.key,
@@ -25,54 +26,37 @@ class FloatingNavBar extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
 
-  static const _barColor = Color(0xFF333333);
-  static const _padding = 8.0;
-  static const _gap = 4.0;
-
-  /// Tab aktif selebar 2,3 tab biasa.
-  static const _activeWeight = 2.3;
-
   @override
   Widget build(BuildContext context) {
+    final p = context.palette;
+
     return SafeArea(
       minimum: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-      child: Container(
-        height: 64,
-        padding: const EdgeInsets.symmetric(horizontal: _padding),
-        decoration: BoxDecoration(
-          color: _barColor,
-          borderRadius: BorderRadius.circular(32),
-          border: Border.all(color: const Color(0x1AFFFFFF)),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x59000000),
-              blurRadius: 24,
-              offset: Offset(0, 8),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(28),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+          child: Container(
+            height: 64,
+            decoration: BoxDecoration(
+              color: p.navBar,
+              // Garis tepi hanya di mode terang supaya navbar terpisah dari latar.
+              border: p.isDark ? null : Border.all(color: p.glassBorder),
+              borderRadius: BorderRadius.circular(28),
             ),
-          ],
-        ),
-        child: LayoutBuilder(
-          builder: (context, c) {
-            final n = items.length;
-            final free = c.maxWidth - _gap * (n - 1);
-            final unit = free / (_activeWeight + (n - 1));
-            final activeW = unit * _activeWeight;
-
-            return Row(
+            child: Row(
               children: [
-                for (var i = 0; i < n; i++) ...[
-                  if (i > 0) const SizedBox(width: _gap),
-                  _NavButton(
-                    item: items[i],
-                    selected: i == currentIndex,
-                    width: i == currentIndex ? activeW : unit,
-                    expandedWidth: activeW,
-                    onTap: () => onTap(i),
+                for (var i = 0; i < items.length; i++)
+                  Expanded(
+                    child: _NavButton(
+                      item: items[i],
+                      selected: i == currentIndex,
+                      onTap: () => onTap(i),
+                    ),
                   ),
-                ],
               ],
-            );
-          },
+            ),
+          ),
         ),
       ),
     );
@@ -83,68 +67,40 @@ class _NavButton extends StatelessWidget {
   const _NavButton({
     required this.item,
     required this.selected,
-    required this.width,
-    required this.expandedWidth,
     required this.onTap,
   });
 
   final NavItem item;
   final bool selected;
-  final double width;
-  final double expandedWidth;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final color = selected ? AppColors.white : Colors.white60;
-    final radius = BorderRadius.circular(24);
+    final p = context.palette;
+    // Tab aktif selalu di atas pil merah, jadi isinya tetap putih.
+    final color = selected ? AppColors.white : p.navIdle;
+    final radius = BorderRadius.circular(22);
 
-    return Semantics(
-      button: true,
-      selected: selected,
-      label: item.label,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 220),
-        curve: Curves.easeOutCubic,
-        width: width,
-        height: 48,
-        decoration: BoxDecoration(
-          color: selected ? AppColors.red : Colors.transparent,
+    return Padding(
+      padding: const EdgeInsets.all(6),
+      child: Material(
+        color: selected ? AppColors.red : Colors.transparent,
+        borderRadius: radius,
+        child: InkWell(
           borderRadius: radius,
-        ),
-        child: Material(
-          type: MaterialType.transparency,
-          child: InkWell(
-            borderRadius: radius,
-            onTap: onTap,
-            child: ClipRect(
-              child: OverflowBox(
-                minWidth: 0,
-                maxWidth: expandedWidth,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(item.icon, color: color, size: 24),
-                    if (selected) ...[
-                      const SizedBox(width: 8),
-                      Flexible(
-                        child: Text(
-                          item.label,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.poppins(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: color,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
+          onTap: onTap,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(item.icon, color: color, size: 24),
+              const SizedBox(height: 2),
+              Text(
+                item.label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTextStyles.navLabel.copyWith(color: color),
               ),
-            ),
+            ],
           ),
         ),
       ),

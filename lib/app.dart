@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:sfa_mobile/ui/core/theme/app_theme.dart';
 
 import 'ui/auth/views/login_screen.dart';
-import 'ui/core/theme/app_theme.dart';
-// import 'ui/manager/manager_shell.dart';
 
 class SfaApp extends StatelessWidget {
   const SfaApp({super.key});
@@ -14,11 +13,13 @@ class SfaApp extends StatelessWidget {
       title: 'Central Sinn',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.theme,
-      builder: (context, child) => AnnotatedRegion<SystemUiOverlayStyle>(
-        value: SystemUiOverlayStyle.light.copyWith(
-          statusBarColor: Colors.transparent,
+      builder: (context, child) => ThemeHost(
+        child: AnnotatedRegion<SystemUiOverlayStyle>(
+          value: SystemUiOverlayStyle.light.copyWith(
+            statusBarColor: Colors.transparent,
+          ),
+          child: child!,
         ),
-        child: child!,
       ),
       // Nanti diganti halaman Login, lalu masuk ke MainShell.
       home: const LoginScreen(),

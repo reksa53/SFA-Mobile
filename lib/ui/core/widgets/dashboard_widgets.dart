@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../theme/app_colors.dart';
+import '../theme/app_theme.dart';
 
 // Warna status, sama dengan layar Visit dan detail customer.
 const kDone = Color(0xFF2ECC40);
@@ -57,11 +57,15 @@ String rupiah(num v) {
   return 'Rp $b';
 }
 
-BoxDecoration dashGlass({double radius = 20}) => BoxDecoration(
-  color: const Color(0x14FFFFFF),
-  borderRadius: BorderRadius.circular(radius),
-  border: Border.all(color: Colors.white10),
-);
+/// Panel tembus pandang di atas latar layar.
+BoxDecoration dashGlass(BuildContext context, {double radius = 20}) {
+  final p = context.palette;
+  return BoxDecoration(
+    color: p.glass,
+    borderRadius: BorderRadius.circular(radius),
+    border: Border.all(color: p.glassBorder),
+  );
+}
 
 /// Header Home: tombol hamburger + judul + sapaan.
 class DashHeader extends StatelessWidget {
@@ -78,20 +82,22 @@ class DashHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final p = context.palette;
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 8, 24, 14),
       child: Row(
         children: [
           Material(
-            color: const Color(0x1AFFFFFF),
+            color: p.glassStrong,
             borderRadius: BorderRadius.circular(14),
             child: InkWell(
               borderRadius: BorderRadius.circular(14),
               onTap: onMenu,
-              child: const SizedBox(
+              child: SizedBox(
                 width: 48,
                 height: 48,
-                child: Icon(Icons.menu, color: AppColors.white),
+                child: Icon(Icons.menu, color: p.text),
               ),
             ),
           ),
@@ -107,7 +113,7 @@ class DashHeader extends StatelessWidget {
                   style: GoogleFonts.poppins(
                     fontSize: 24,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.white,
+                    color: p.text,
                     height: 1.15,
                   ),
                 ),
@@ -118,7 +124,7 @@ class DashHeader extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: GoogleFonts.poppins(
                       fontSize: 12,
-                      color: Colors.white60,
+                      color: p.textFaint,
                     ),
                   ),
               ],
@@ -146,7 +152,7 @@ class DashSection extends StatelessWidget {
           style: GoogleFonts.poppins(
             fontSize: 16,
             fontWeight: FontWeight.w700,
-            color: AppColors.white,
+            color: context.palette.text,
           ),
         ),
         const SizedBox(height: 10),
@@ -171,7 +177,7 @@ class DashLabel extends StatelessWidget {
         style: GoogleFonts.poppins(
           fontSize: 12,
           fontWeight: FontWeight.w600,
-          color: Colors.white60,
+          color: context.palette.textFaint,
         ),
       ),
     );
@@ -193,27 +199,30 @@ class DashCard extends StatelessWidget {
     return Container(
       width: double.infinity,
       padding: padding,
-      decoration: dashGlass(),
+      decoration: dashGlass(context),
       child: child,
     );
   }
 }
 
+/// Titik status kecil. [hollow] = lingkaran kosong (status "pending"), warnanya
+/// mengikuti tema sehingga tetap terlihat di mode terang.
 class DashDot extends StatelessWidget {
-  const DashDot({super.key, required this.color, this.hollow = false});
+  const DashDot({super.key, this.color = Colors.white, this.hollow = false});
 
   final Color color;
   final bool hollow;
 
   @override
   Widget build(BuildContext context) {
+    final c = hollow ? context.palette.textMuted : color;
     return Container(
       width: 8,
       height: 8,
       decoration: BoxDecoration(
-        color: hollow ? null : color,
+        color: hollow ? null : c,
         shape: BoxShape.circle,
-        border: hollow ? Border.all(color: color, width: 1.4) : null,
+        border: hollow ? Border.all(color: c, width: 1.4) : null,
       ),
     );
   }
@@ -236,10 +245,12 @@ class DashStat extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final p = context.palette;
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
-      decoration: dashGlass(radius: 16),
+      decoration: dashGlass(context, radius: 16),
       child: Column(
         children: [
           FittedBox(
@@ -249,7 +260,7 @@ class DashStat extends StatelessWidget {
               style: GoogleFonts.poppins(
                 fontSize: 22,
                 fontWeight: FontWeight.w700,
-                color: AppColors.white,
+                color: p.text,
                 height: 1.1,
               ),
             ),
@@ -258,8 +269,8 @@ class DashStat extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              if (dot != null) ...[
-                DashDot(color: dot!, hollow: hollow),
+              if (dot != null || hollow) ...[
+                DashDot(color: dot ?? Colors.white, hollow: hollow),
                 const SizedBox(width: 5),
               ],
               Flexible(
@@ -267,10 +278,7 @@ class DashStat extends StatelessWidget {
                   label,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.poppins(
-                    fontSize: 11,
-                    color: Colors.white70,
-                  ),
+                  style: GoogleFonts.poppins(fontSize: 11, color: p.textMuted),
                 ),
               ),
             ],
@@ -309,15 +317,17 @@ class DashMessage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final p = context.palette;
+
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(text, style: GoogleFonts.poppins(color: Colors.white70)),
+          Text(text, style: GoogleFonts.poppins(color: p.textMuted)),
           if (onRetry != null)
             TextButton(
               onPressed: onRetry,
-              style: TextButton.styleFrom(foregroundColor: AppColors.white),
+              style: TextButton.styleFrom(foregroundColor: p.text),
               child: const Text('Coba lagi'),
             ),
         ],
