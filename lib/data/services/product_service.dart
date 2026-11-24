@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:http_parser/http_parser.dart';
 
 import '../models/product.dart';
 import 'api_client.dart';
@@ -64,7 +65,6 @@ class ProductService extends ChangeNotifier {
     return Product.fromJson(res.data['data']);
   }
 
-  // Masih lokal sampai product_form_screen / product_detail_screen disambung ke API.
   bool knowsBrand(String b) => brands.contains(b);
 
   bool skuExists(String sku) =>
@@ -106,7 +106,6 @@ class ProductService extends ChangeNotifier {
   // kirim ke server; balasannya produk lengkap (stok dan batch terbaru)
   Future<void> addBatch(Product p, ProductBatch b) async {
     if (p.id == null) {
-      // produk lokal, belum ada di server
       p.batches.add(b);
       notifyListeners();
       return;
@@ -128,37 +127,91 @@ class ProductService extends ChangeNotifier {
 
   String _d(DateTime d) => d.toIso8601String().substring(0, 10);
 
-Future<void> create({
-  required String sku,
-  required String name,
-  String? brand,
-  String? category,
-  required String unit,
-  required int price,
-  required bool active,
-  required String batchNumber,
-  DateTime? expiry,
-  required int qty,
-  required DateTime received,
-  XFile? photo,
-}) async {
-  final form = FormData.fromMap({
-    'sku': sku,
-    'name': name,
-    if (brand != null) 'brand': brand,
-    if (category != null) 'category': category,
-    'unit': unit,
-    'price': price,
-    'is_active': active ? 1 : 0,
-    'batch[batch_number]': batchNumber,
-    if (expiry != null) 'batch[expiry_date]': _d(expiry),
-    'batch[quantity]': qty,
-    'batch[received_at]': _d(received),
-    if (photo != null) 'photo': await MultipartFile.fromFile(photo.path, filename: photo.name),
-  });
-  final res = await ApiClient.instance.dio.post('/products', data: form);
-  _items.add(Product.fromJson(res.data['data']));
-  notifyListeners();
-}
-}
+  MediaType _imageMediaType(String path) {
+    final ext = path.toLowerCase();
+    if (ext.endsWith('.png')) return MediaType('image', 'png');
+    if (ext.endsWith('.webp')) return MediaType('image', 'webp');
+    return MediaType('image', 'jpeg');
+  }
 
+  Future<void> create({
+    required String sku,
+    required String name,
+    String? brand,
+    String? category,
+    required String unit,
+    required int price,
+    required bool active,
+    required String batchNumber,
+    DateTime? expiry,
+    required int qty,
+    required DateTime received,
+    XFile? photo,
+  }) async {
+    final form = FormData.fromMap({
+      'sku': sku,
+      'name': name,
+      if (brand != null) 'brand': brand,
+      if (category != null) 'category': category,
+      'unit': unit,
+      'price': price,
+      'is_active': active ? 1 : 0,
+      'batch[batch_number]': batchNumber,
+      if (expiry != null) 'batch[expiry_date]': _d(expiry),
+      'batch[quantity]': qty,
+      'batch[received_at]': _d(received),
+      if (photo != null)
+        'photo': await MultipartFile.fromFile(
+          photo.path,
+          filename: photo.name,
+          contentType: _imageMediaType(photo.path),
+        ),
+    });
+    final res = await ApiClient.instance.dio.post('/products', data: form);
+    _items.add(Product.fromJson(res.data['data']));
+    notifyListeners();
+  }
+
+  Future<void> delete(Product p) async {
+    await ApiClient.instance.dio.delete('/products/${p.id}');
+    _items.removeWhere((x) => x.id == p.id);
+    notifyListeners();
+  }
+
+  // Laravel tidak membaca multipart lewat PUT, jadi POST dengan _method=PUT.
+  // sku, name, price wajib karena aturan validasi update.
+  Future<Product> updatePhoto(Product p, String path) async {
+    try {
+      debugPrint('UPLOAD START: id=${p.id}, path=$path');
+      await ApiClient.instance.dio.post(
+        '/products/${p.id}',
+        data: FormData.fromMap({
+          'sku': p.sku,
+          'name': p.name,
+          if (p.brand != null) 'brand': p.brand,
+          if (p.category != null) 'category': p.category,
+          'unit': p.unit,
+          'price': p.price,
+          'is_active': p.isActive ? 1 : 0,
+          'photo': await MultipartFile.fromFile(
+            path,
+            filename: path.split('/').last,
+            contentType: _imageMediaType(path),
+          ),
+        }),
+      );
+      final res = await ApiClient.instance.dio.get('/products/${p.id}');
+      final full = Product.fromJson(res.data['data']);
+      final i = _items.indexWhere((x) => x.id == p.id);
+      if (i >= 0) _items[i] = full;
+      notifyListeners();
+      return full;
+    } on DioException catch (e) {
+      debugPrint('UPDATE PHOTO DIO ERROR: ${e.response?.statusCode} -> ${e.response?.data}');
+      rethrow;
+    } catch (e, s) {
+      debugPrint('UPDATE PHOTO OTHER ERROR: $e\n$s');
+      rethrow;
+    }
+  }
+}

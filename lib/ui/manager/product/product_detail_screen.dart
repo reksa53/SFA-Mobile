@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../../data/models/product.dart';
 import '../../../data/services/product_service.dart';
@@ -24,6 +25,64 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     ProductService.instance.loadDetail(widget.product); // ambil batch dari server
   }
 
+  Future<void> _editPhoto(Product p) async {
+    final file = await ImagePicker().pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 70,
+      maxWidth: 1000,
+    );
+    if (file == null || !mounted) return;
+
+    try {
+      await ProductService.instance.updatePhoto(p, file.path);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Foto produk diperbarui')),
+      );
+    } on DioException {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Gagal mengunggah foto')),
+      );
+    }
+  }
+
+  Future<void> _confirmDelete(Product p) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Hapus Produk?'),
+        content: Text('Produk "${p.name}" akan dihapus permanen.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.red),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Hapus'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+
+    try {
+      await ProductService.instance.delete(p);
+      if (!mounted) return;
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Produk dihapus')),
+      );
+    } on DioException {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Gagal menghapus produk')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) => ListenableBuilder(
         listenable: ProductService.instance,
@@ -38,25 +97,88 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  const Row(children: [
-                    BackBtn(),
-                    SizedBox(width: 14),
-                    Text('Detail Produk',
-                        style: TextStyle(color: AppColors.white, fontSize: 28, fontWeight: FontWeight.bold)),
+                  Row(children: [
+                    const BackBtn(),
+                    const SizedBox(width: 14),
+                    const Expanded(
+                      child: Text(
+                        'Detail Produk',
+                        style: TextStyle(
+                          color: AppColors.white,
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    if (widget.canEdit)
+                      IconButton(
+                        onPressed: () => _confirmDelete(p),
+                        icon: const Icon(Icons.delete_outline, color: AppColors.red),
+                        tooltip: 'Hapus Produk',
+                      ),
                   ]),
                   const SizedBox(height: 24),
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(24)),
                     child: Row(children: [
-                      Container(
-                        width: 64,
-                        height: 64,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF1F4F8),
-                          borderRadius: BorderRadius.circular(14),
+                      GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: widget.canEdit ? () => _editPhoto(p) : null,
+                        child: Stack(
+                          children: [
+                            Container(
+                              width: 64,
+                              height: 64,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF1F4F8),
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(14),
+                                child: p.photoUrl != null && p.photoUrl!.isNotEmpty
+                                    ? Image.network(
+                                        p.photoUrl!,
+                                        width: 64,
+                                        height: 64,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (_, _, _) => const Icon(
+                                          Icons.inventory_2_outlined,
+                                          color: kTextMuted,
+                                          size: 28,
+                                        ),
+                                      )
+                                    : const Icon(
+                                        Icons.inventory_2_outlined,
+                                        color: kTextMuted,
+                                        size: 28,
+                                      ),
+                              ),
+                            ),
+                            if (widget.canEdit)
+                              Positioned(
+                                right: 0,
+                                bottom: 0,
+                                child: Container(
+                                  width: 24,
+                                  height: 24,
+                                  decoration: BoxDecoration(
+                                    color: AppColors.red,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: AppColors.white,
+                                      width: 2,
+                                    ),
+                                  ),
+                                  child: const Icon(
+                                    Icons.camera_alt_outlined,
+                                    size: 13,
+                                    color: AppColors.white,
+                                  ),
+                                ),
+                              ),
+                          ],
                         ),
-                        child: const Icon(Icons.inventory_2_outlined, color: kTextMuted, size: 28),
                       ),
                       const SizedBox(width: 14),
                       Expanded(
@@ -216,21 +338,21 @@ class _AddBatchState extends State<_AddBatch> {
   }
 
   Future<void> _save() async {
-  if (!_key.currentState!.validate()) return;
-  final q = int.parse(_qty.text);
-  try {
-    await ProductService.instance.addBatch(
-      widget.product,
-      ProductBatch(number: _no.text.trim(), expiry: _expiry, initialQty: q, qty: q, receivedAt: _received),
-    );
-    if (mounted) Navigator.pop(context);
-  } on DioException catch (e) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(e.response?.statusCode == 422 ? 'Nomor batch sudah ada' : 'Gagal menyimpan batch'),
-    ));
+    if (!_key.currentState!.validate()) return;
+    final q = int.parse(_qty.text);
+    try {
+      await ProductService.instance.addBatch(
+        widget.product,
+        ProductBatch(number: _no.text.trim(), expiry: _expiry, initialQty: q, qty: q, receivedAt: _received),
+      );
+      if (mounted) Navigator.pop(context);
+    } on DioException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(e.response?.statusCode == 422 ? 'Nomor batch sudah ada' : 'Gagal menyimpan batch'),
+      ));
+    }
   }
-}
 
   @override
   Widget build(BuildContext context) => SheetFrame(
