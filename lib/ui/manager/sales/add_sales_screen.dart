@@ -10,14 +10,11 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../../data/models/sales.dart';
 import '../../core/theme/app_colors.dart';
-import '../../core/theme/manager_colors.dart';
+import '../../core/theme/app_theme.dart';
 import 'sales_avatar.dart';
 
 /// Pilihan di menu ganti foto.
 enum _FotoAksi { kamera, galeri, hapus }
-
-/// Warna dasar kolom isian (gelap).
-const _warnaKolom = Color(0xFF3F3F3F);
 
 /// Layar "Add Sales": form untuk menambah akun sales baru.
 /// Dibuka dari tombol "Add Sales" di SalesVisitScreen dan menutupi navbar.
@@ -90,9 +87,10 @@ class _AddSalesScreenState extends State<AddSalesScreen> {
 
   /// Ketuk lingkaran foto -> muncul menu: kamera, galeri, atau hapus foto.
   Future<void> _pilihFoto() async {
+    final p = context.palette;
     final aksi = await showModalBottomSheet<_FotoAksi>(
       context: context,
-      backgroundColor: const Color(0xFF565656),
+      backgroundColor: p.sheet,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -105,7 +103,7 @@ class _AddSalesScreenState extends State<AddSalesScreen> {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: Colors.white30,
+                color: p.isDark ? Colors.white30 : const Color(0xFFD1D5DB),
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -124,7 +122,7 @@ class _AddSalesScreenState extends State<AddSalesScreen> {
               _FotoMenuItem(
                 icon: Icons.delete_outline,
                 label: 'Remove photo',
-                color: const Color(0xFFFF8A8A),
+                color: p.error,
                 onTap: () => Navigator.pop(ctx, _FotoAksi.hapus),
               ),
             const SizedBox(height: 8),
@@ -193,149 +191,155 @@ class _AddSalesScreenState extends State<AddSalesScreen> {
     onPressed: onTap,
     icon: Icon(
       tersembunyi ? Icons.visibility_outlined : Icons.visibility_off_outlined,
-      color: Colors.white70,
+      color: context.palette.textMuted,
     ),
   );
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: Column(
-          children: [
-            // Header: tombol back + judul (sama seperti layar Visit).
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
-              child: SizedBox(
-                height: 44,
-                child: Row(
-                  children: [
-                    Material(
-                      color: const Color(0x1AFFFFFF),
-                      borderRadius: BorderRadius.circular(12),
-                      child: InkWell(
+    final p = context.palette;
+
+    return ThemedPage(
+      child: Scaffold(
+        backgroundColor: p.bg,
+        body: SafeArea(
+          child: Column(
+            children: [
+              // Header: tombol back + judul (sama seperti layar Visit).
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
+                child: SizedBox(
+                  height: 44,
+                  child: Row(
+                    children: [
+                      Material(
+                        color: p.glassStrong,
                         borderRadius: BorderRadius.circular(12),
-                        onTap: () => Navigator.of(context).maybePop(),
-                        child: const SizedBox(
-                          width: 44,
-                          height: 44,
-                          child: Icon(
-                            Icons.chevron_left,
-                            size: 28,
-                            color: AppColors.white,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(12),
+                          onTap: () => Navigator.of(context).maybePop(),
+                          child: SizedBox(
+                            width: 44,
+                            height: 44,
+                            child: Icon(
+                              Icons.chevron_left,
+                              size: 28,
+                              color: p.text,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    Text(
-                      'Add Sales',
-                      style: GoogleFonts.poppins(
-                        fontSize: 30,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.white,
+                      const SizedBox(width: 12),
+                      Text(
+                        'Add Sales',
+                        style: GoogleFonts.poppins(
+                          fontSize: 30,
+                          fontWeight: FontWeight.w700,
+                          color: p.text,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
-            ),
-            // Box abu-abu memenuhi sisa layar sampai tombol SAVE. Kalau layar
-            // pendek / keyboard muncul, isinya bisa digulir.
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: ManagerColors.calendar,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: Colors.white10),
-                  ),
-                  child: LayoutBuilder(
-                    builder: (context, box) => SingleChildScrollView(
-                      padding: const EdgeInsets.fromLTRB(16, 20, 16, 20),
-                      child: ConstrainedBox(
-                        constraints: BoxConstraints(
-                          minHeight: math.max(0.0, box.maxHeight - 40),
-                        ),
-                        child: IntrinsicHeight(
-                          child: Form(
-                            key: _formKey,
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.start,
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                const SizedBox(height: 10),
-                                Center(
-                                  child: _FotoPicker(
-                                    id: _id,
-                                    nama: _nama,
-                                    foto: _foto,
-                                    onTap: _pilihFoto,
-                                  ),
-                                ),
-                                const SizedBox(height: 20),
-                                _Field(
-                                  label: 'Full Name',
-                                  controller: _nama,
-                                  hint: 'Example: Icha Clowy',
-                                  icon: Icons.person,
-                                  keyboardType: TextInputType.name,
-                                  textCapitalization: TextCapitalization.words,
-                                  validator: (v) => _wajib(v, 'Name'),
-                                ),
-                                const SizedBox(height: 28),
-                                _Field(
-                                  label: 'Email',
-                                  controller: _email,
-                                  hint: 'name@company.com',
-                                  icon: Icons.mail,
-                                  keyboardType: TextInputType.emailAddress,
-                                  validator: _cekEmail,
-                                ),
-                                const SizedBox(height: 28),
-                                _Field(
-                                  label: 'Phone Number',
-                                  controller: _telepon,
-                                  hint: '08xxxxxxxxxx',
-                                  icon: Icons.phone,
-                                  keyboardType: TextInputType.phone,
-                                  validator: _cekTelepon,
-                                ),
-                                const SizedBox(height: 28),
-                                _Field(
-                                  label: 'Password',
-                                  controller: _password,
-                                  hint: 'At least 8 characters',
-                                  icon: Icons.lock,
-                                  obscure: _hidePassword,
-                                  validator: _cekPassword,
-                                  suffix: _mata(
-                                    _hidePassword,
-                                    () => setState(
-                                      () => _hidePassword = !_hidePassword,
+              // Box memenuhi sisa layar sampai tombol SAVE. Kalau layar
+              // pendek / keyboard muncul, isinya bisa digulir.
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: p.calendar,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: p.glassBorder),
+                    ),
+                    child: LayoutBuilder(
+                      builder: (context, box) => SingleChildScrollView(
+                        padding: const EdgeInsets.fromLTRB(16, 20, 16, 20),
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(
+                            minHeight: math.max(0.0, box.maxHeight - 40),
+                          ),
+                          child: IntrinsicHeight(
+                            child: Form(
+                              key: _formKey,
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.start,
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  const SizedBox(height: 10),
+                                  Center(
+                                    child: _FotoPicker(
+                                      id: _id,
+                                      nama: _nama,
+                                      foto: _foto,
+                                      onTap: _pilihFoto,
                                     ),
                                   ),
-                                ),
-                                const SizedBox(height: 28),
-                                _Field(
-                                  label: 'Confirm Password',
-                                  controller: _konfirmasi,
-                                  hint: 'Repeat password',
-                                  icon: Icons.lock,
-                                  obscure: _hideKonfirmasi,
-                                  textInputAction: TextInputAction.done,
-                                  validator: _cekKonfirmasi,
-                                  onSubmitted: (_) => _simpan(),
-                                  suffix: _mata(
-                                    _hideKonfirmasi,
-                                    () => setState(
-                                      () => _hideKonfirmasi = !_hideKonfirmasi,
+                                  const SizedBox(height: 20),
+                                  _Field(
+                                    label: 'Full Name',
+                                    controller: _nama,
+                                    hint: 'Example: Icha Clowy',
+                                    icon: Icons.person,
+                                    keyboardType: TextInputType.name,
+                                    textCapitalization:
+                                        TextCapitalization.words,
+                                    validator: (v) => _wajib(v, 'Name'),
+                                  ),
+                                  const SizedBox(height: 28),
+                                  _Field(
+                                    label: 'Email',
+                                    controller: _email,
+                                    hint: 'name@company.com',
+                                    icon: Icons.mail,
+                                    keyboardType: TextInputType.emailAddress,
+                                    validator: _cekEmail,
+                                  ),
+                                  const SizedBox(height: 28),
+                                  _Field(
+                                    label: 'Phone Number',
+                                    controller: _telepon,
+                                    hint: '08xxxxxxxxxx',
+                                    icon: Icons.phone,
+                                    keyboardType: TextInputType.phone,
+                                    validator: _cekTelepon,
+                                  ),
+                                  const SizedBox(height: 28),
+                                  _Field(
+                                    label: 'Password',
+                                    controller: _password,
+                                    hint: 'At least 8 characters',
+                                    icon: Icons.lock,
+                                    obscure: _hidePassword,
+                                    validator: _cekPassword,
+                                    suffix: _mata(
+                                      _hidePassword,
+                                      () => setState(
+                                        () => _hidePassword = !_hidePassword,
+                                      ),
                                     ),
                                   ),
-                                ),
-                              ],
+                                  const SizedBox(height: 28),
+                                  _Field(
+                                    label: 'Confirm Password',
+                                    controller: _konfirmasi,
+                                    hint: 'Repeat password',
+                                    icon: Icons.lock,
+                                    obscure: _hideKonfirmasi,
+                                    textInputAction: TextInputAction.done,
+                                    validator: _cekKonfirmasi,
+                                    onSubmitted: (_) => _simpan(),
+                                    suffix: _mata(
+                                      _hideKonfirmasi,
+                                      () => setState(
+                                        () =>
+                                            _hideKonfirmasi = !_hideKonfirmasi,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ),
@@ -344,76 +348,76 @@ class _AddSalesScreenState extends State<AddSalesScreen> {
                   ),
                 ),
               ),
-            ),
-            // Baris bawah: Cancel di kiri, SAVE (merah) di kanan, sama
-            // seperti layar Edit Visit.
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
-              child: Row(
-                children: [
-                  Expanded(
-                    flex: 36,
-                    child: SizedBox(
-                      height: 48,
-                      child: FilledButton(
-                        onPressed: _saving
-                            ? null
-                            : () => Navigator.of(context).maybePop(),
-                        style: FilledButton.styleFrom(
-                          backgroundColor: const Color(0x24FFFFFF),
-                          foregroundColor: AppColors.white,
-                          disabledBackgroundColor: const Color(0x24FFFFFF),
-                          disabledForegroundColor: Colors.white38,
-                          minimumSize: Size.zero,
-                          shape: const StadiumBorder(),
-                        ),
-                        child: Text(
-                          'Cancel',
-                          style: GoogleFonts.poppins(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
+              // Baris bawah: Cancel di kiri, SAVE (merah) di kanan, sama
+              // seperti layar Edit Visit.
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
+                child: Row(
+                  children: [
+                    Expanded(
+                      flex: 36,
+                      child: SizedBox(
+                        height: 48,
+                        child: FilledButton(
+                          onPressed: _saving
+                              ? null
+                              : () => Navigator.of(context).maybePop(),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: p.glassButton,
+                            foregroundColor: p.text,
+                            disabledBackgroundColor: p.glassButton,
+                            disabledForegroundColor: p.textGhost,
+                            minimumSize: Size.zero,
+                            shape: const StadiumBorder(),
+                          ),
+                          child: Text(
+                            'Cancel',
+                            style: GoogleFonts.poppins(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    flex: 64,
-                    child: SizedBox(
-                      height: 48,
-                      child: FilledButton(
-                        onPressed: _saving ? null : _simpan,
-                        style: FilledButton.styleFrom(
-                          backgroundColor: AppColors.red,
-                          foregroundColor: AppColors.white,
-                          minimumSize: Size.zero,
-                          shape: const StadiumBorder(),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      flex: 64,
+                      child: SizedBox(
+                        height: 48,
+                        child: FilledButton(
+                          onPressed: _saving ? null : _simpan,
+                          style: FilledButton.styleFrom(
+                            backgroundColor: AppColors.red,
+                            foregroundColor: AppColors.white,
+                            minimumSize: Size.zero,
+                            shape: const StadiumBorder(),
+                          ),
+                          child: _saving
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: AppColors.white,
+                                  ),
+                                )
+                              : Text(
+                                  'SAVE',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 0.3,
+                                  ),
+                                ),
                         ),
-                        child: _saving
-                            ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: AppColors.white,
-                                ),
-                              )
-                            : Text(
-                                'SAVE',
-                                style: GoogleFonts.poppins(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w700,
-                                  letterSpacing: 0.3,
-                                ),
-                              ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -437,6 +441,8 @@ class _FotoPicker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final p = context.palette;
+
     return InkWell(
       customBorder: const CircleBorder(),
       onTap: onTap,
@@ -455,7 +461,12 @@ class _FotoPicker extends StatelessWidget {
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         color: AppColors.grey,
-                        border: Border.all(color: Colors.white38, width: 2),
+                        border: Border.all(
+                          color: p.isDark
+                              ? Colors.white38
+                              : const Color(0xFFD1D5DB),
+                          width: 2,
+                        ),
                       ),
                       child: const Icon(
                         Icons.person,
@@ -480,7 +491,7 @@ class _FotoPicker extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: AppColors.red,
                   shape: BoxShape.circle,
-                  border: Border.all(color: ManagerColors.calendar, width: 2),
+                  border: Border.all(color: p.calendar, width: 2),
                 ),
                 child: const Icon(
                   Icons.camera_alt,
@@ -502,24 +513,28 @@ class _FotoMenuItem extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.onTap,
-    this.color = AppColors.white,
+    this.color,
   });
 
   final IconData icon;
   final String label;
   final VoidCallback onTap;
-  final Color color;
+
+  /// Null = warna teks tema.
+  final Color? color;
 
   @override
   Widget build(BuildContext context) {
+    final c = color ?? context.palette.text;
+
     return ListTile(
-      leading: Icon(icon, color: color),
+      leading: Icon(icon, color: c),
       title: Text(
         label,
         style: GoogleFonts.poppins(
           fontSize: 15,
           fontWeight: FontWeight.w500,
-          color: color,
+          color: c,
         ),
       ),
       onTap: onTap,
@@ -527,7 +542,7 @@ class _FotoMenuItem extends StatelessWidget {
   }
 }
 
-/// Satu kolom isian: label di atas, kotak gelap di bawahnya.
+/// Satu kolom isian: label di atas, kotak di bawahnya.
 class _Field extends StatelessWidget {
   const _Field({
     required this.label,
@@ -562,6 +577,8 @@ class _Field extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final p = context.palette;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -570,7 +587,7 @@ class _Field extends StatelessWidget {
           style: GoogleFonts.poppins(
             fontSize: 12.5,
             fontWeight: FontWeight.w600,
-            color: Colors.white70,
+            color: p.textMuted,
           ),
         ),
         const SizedBox(height: 6),
@@ -583,18 +600,15 @@ class _Field extends StatelessWidget {
           textInputAction: textInputAction,
           onFieldSubmitted: onSubmitted,
           cursorColor: AppColors.red,
-          style: GoogleFonts.poppins(fontSize: 14.5, color: AppColors.white),
+          style: GoogleFonts.poppins(fontSize: 14.5, color: p.text),
           decoration: InputDecoration(
             hintText: hint,
-            hintStyle: GoogleFonts.poppins(fontSize: 14, color: Colors.white38),
-            errorStyle: GoogleFonts.poppins(
-              fontSize: 12,
-              color: const Color(0xFFFF8A8A),
-            ),
-            prefixIcon: Icon(icon, size: 20, color: Colors.white54),
+            hintStyle: GoogleFonts.poppins(fontSize: 14, color: p.fieldHint),
+            errorStyle: GoogleFonts.poppins(fontSize: 12, color: p.error),
+            prefixIcon: Icon(icon, size: 20, color: p.textFaint),
             suffixIcon: suffix,
             filled: true,
-            fillColor: _warnaKolom,
+            fillColor: p.panelField,
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 14,
               vertical: 14,
@@ -602,7 +616,7 @@ class _Field extends StatelessWidget {
             border: _border(Colors.transparent),
             enabledBorder: _border(Colors.transparent),
             focusedBorder: _border(AppColors.red),
-            errorBorder: _border(const Color(0xFFFF8A8A)),
+            errorBorder: _border(p.error),
             focusedErrorBorder: _border(AppColors.red),
           ),
         ),

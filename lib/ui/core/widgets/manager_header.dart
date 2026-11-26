@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../theme/app_colors.dart';
+import '../theme/app_theme.dart';
 
-/// Header halaman Manager: judul di kiri, tombol cari putih di kanan.
+/// Header halaman Manager: judul di kiri, tombol cari di kanan.
 /// Saat tombol cari ditekan, judul berganti menjadi kolom pencarian.
 /// SafeArea dipasang oleh layar yang memakainya.
 class ManagerHeader extends StatelessWidget {
@@ -26,6 +26,8 @@ class ManagerHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final p = context.palette;
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
       child: SizedBox(
@@ -38,15 +40,13 @@ class ManagerHeader extends StatelessWidget {
                       controller: searchController,
                       autofocus: true,
                       onChanged: onSearchChanged,
-                      style: GoogleFonts.poppins(
-                        fontSize: 16,
-                        color: AppColors.white,
-                      ),
+                      cursorColor: p.text,
+                      style: GoogleFonts.poppins(fontSize: 16, color: p.text),
                       decoration: InputDecoration(
                         hintText: searchHint,
                         hintStyle: GoogleFonts.poppins(
                           fontSize: 16,
-                          color: Colors.white54,
+                          color: p.textFaint,
                         ),
                         border: InputBorder.none,
                         isDense: true,
@@ -61,7 +61,7 @@ class ManagerHeader extends StatelessWidget {
                         style: GoogleFonts.poppins(
                           fontSize: 32,
                           fontWeight: FontWeight.w700,
-                          color: AppColors.white,
+                          color: p.text,
                         ),
                       ),
                     ),
@@ -70,17 +70,21 @@ class ManagerHeader extends StatelessWidget {
             Tooltip(
               message: searchOpen ? 'Close search' : 'Search',
               child: Material(
-                color: AppColors.white,
+                color: p.surface,
                 borderRadius: BorderRadius.circular(12),
                 child: InkWell(
                   borderRadius: BorderRadius.circular(12),
                   onTap: onSearchToggle,
-                  child: SizedBox(
+                  child: Container(
                     width: 44,
                     height: 44,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      border: p.surfaceBorder,
+                    ),
                     child: Icon(
                       searchOpen ? Icons.close : Icons.search,
-                      color: AppColors.black,
+                      color: p.onSurface,
                     ),
                   ),
                 ),

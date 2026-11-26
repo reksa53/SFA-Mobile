@@ -8,6 +8,7 @@ import '../../../data/models/visit.dart';
 import '../../../data/repositories/sales_visit_repository.dart';
 import '../../../utils/date_id.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_theme.dart';
 import '../../core/widgets/manager_header.dart';
 import 'add_sales_screen.dart';
 import 'sales_avatar.dart';
@@ -145,8 +146,8 @@ class _SalesVisitScreenState extends State<SalesVisitScreen> {
     return _sales.where((s) => s.nama.toLowerCase().contains(q)).toList();
   }
 
-  Future<void> _open(Sales sales) async {
-    await Navigator.of(context).push(
+  void _open(Sales sales) {
+    Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => VisitScreen(
           sales: sales,
@@ -156,8 +157,6 @@ class _SalesVisitScreenState extends State<SalesVisitScreen> {
         ),
       ),
     );
-    // Muat ulang: foto sales bisa berubah (atau sales dihapus) di layar Visit.
-    if (mounted) _load();
   }
 
   Future<void> _addSales() async {
@@ -175,107 +174,113 @@ class _SalesVisitScreenState extends State<SalesVisitScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final p = context.palette;
     final now = DateTime.now();
+
     // SafeArea ikut menyisakan ruang untuk navbar melayang (extendBody di
     // TabShell), jadi footer berhenti tepat di atas navbar.
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: Column(
-          children: [
-            ManagerHeader(
-              title: 'Sales & Visit',
-              searchOpen: _searching,
-              searchController: _search,
-              onSearchToggle: _toggleSearch,
-              onSearchChanged: (_) => setState(() {}),
-              searchHint: 'Search sales...',
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  '${_sales.length} sales · ${namaBulan(now.month)} ${now.year}',
-                  style: GoogleFonts.poppins(
-                    fontSize: 13,
-                    color: Colors.white70,
+    return ThemedPage(
+      child: Scaffold(
+        backgroundColor: p.bg,
+        body: SafeArea(
+          child: Column(
+            children: [
+              ManagerHeader(
+                title: 'Sales & Visit',
+                searchOpen: _searching,
+                searchController: _search,
+                onSearchToggle: _toggleSearch,
+                onSearchChanged: (_) => setState(() {}),
+                searchHint: 'Search sales...',
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    '${_sales.length} sales · ${namaBulan(now.month)} ${now.year}',
+                    style: GoogleFonts.poppins(
+                      fontSize: 13,
+                      color: p.textMuted,
+                    ),
                   ),
                 ),
               ),
-            ),
-            Expanded(child: _buildList()),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    children: [
-                      Text(
-                        'All Sales',
-                        style: GoogleFonts.poppins(
-                          fontSize: 12,
-                          color: AppColors.white,
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 1,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.glass,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          '${_sales.length}',
+              Expanded(child: _buildList()),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          'All Sales',
                           style: GoogleFonts.poppins(
                             fontSize: 12,
-                            color: AppColors.white,
+                            color: p.text,
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                  SizedBox(
-                    height: 32,
-                    child: FilledButton(
-                      onPressed: _addSales,
-                      style: FilledButton.styleFrom(
-                        backgroundColor: AppColors.red,
-                        foregroundColor: AppColors.white,
-                        minimumSize: Size.zero,
-                        padding: const EdgeInsets.symmetric(horizontal: 14),
-                        shape: const StadiumBorder(),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            'Add Sales',
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 1,
+                          ),
+                          decoration: BoxDecoration(
+                            color: p.glassChip,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            '${_sales.length}',
                             style: GoogleFonts.poppins(
                               fontSize: 12,
-                              fontWeight: FontWeight.w600,
+                              color: p.text,
                             ),
                           ),
-                          const SizedBox(width: 6),
-                          const Icon(Icons.add_circle, size: 16),
-                        ],
+                        ),
+                      ],
+                    ),
+                    SizedBox(
+                      height: 32,
+                      child: FilledButton(
+                        onPressed: _addSales,
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.red,
+                          foregroundColor: AppColors.white,
+                          minimumSize: Size.zero,
+                          padding: const EdgeInsets.symmetric(horizontal: 14),
+                          shape: const StadiumBorder(),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              'Add Sales',
+                              style: GoogleFonts.poppins(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            const Icon(Icons.add_circle, size: 16),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
 
   Widget _buildList() {
+    final p = context.palette;
+
     if (_loading) {
       return const Center(
         child: CircularProgressIndicator(color: AppColors.red),
@@ -288,7 +293,7 @@ class _SalesVisitScreenState extends State<SalesVisitScreen> {
           children: [
             Text(
               'Failed to load sales',
-              style: GoogleFonts.poppins(color: AppColors.white),
+              style: GoogleFonts.poppins(color: p.text),
             ),
             const SizedBox(height: 12),
             FilledButton(
@@ -308,7 +313,7 @@ class _SalesVisitScreenState extends State<SalesVisitScreen> {
       return Center(
         child: Text(
           _sales.isEmpty ? 'No sales yet' : 'No sales found',
-          style: GoogleFonts.poppins(color: AppColors.white),
+          style: GoogleFonts.poppins(color: p.text),
         ),
       );
     }
@@ -320,8 +325,11 @@ class _SalesVisitScreenState extends State<SalesVisitScreen> {
       child: Padding(
         padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
         child: Material(
-          color: AppColors.white,
-          borderRadius: BorderRadius.circular(24),
+          color: p.surface,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+            side: p.isDark ? BorderSide.none : BorderSide(color: p.divider),
+          ),
           clipBehavior: Clip.antiAlias,
           child: RefreshIndicator(
             color: AppColors.red,
@@ -331,11 +339,8 @@ class _SalesVisitScreenState extends State<SalesVisitScreen> {
               physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.symmetric(vertical: 4),
               itemCount: list.length,
-              separatorBuilder: (_, _) => const Divider(
-                height: 1,
-                thickness: 1,
-                color: Color(0xFFECECEC),
-              ),
+              separatorBuilder: (_, _) =>
+                  Divider(height: 1, thickness: 1, color: p.divider),
               itemBuilder: (_, i) => _SalesRow(
                 sales: list[i],
                 ringkasan:
@@ -365,8 +370,8 @@ class _SalesRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final p = context.palette;
     final kosong = ringkasan.total == 0;
-    const abu = Color(0xFF777777);
 
     return InkWell(
       onTap: onTap,
@@ -387,7 +392,7 @@ class _SalesRow extends StatelessWidget {
                     style: GoogleFonts.poppins(
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.black,
+                      color: p.onSurface,
                     ),
                   ),
                   const SizedBox(height: 1),
@@ -402,7 +407,7 @@ class _SalesRow extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                           style: GoogleFonts.poppins(
                             fontSize: 11.5,
-                            color: abu,
+                            color: p.onSurfaceMuted,
                           ),
                         ),
                       ),
@@ -411,7 +416,7 @@ class _SalesRow extends StatelessWidget {
                           '${ringkasan.selesai}/${ringkasan.total} done',
                           style: GoogleFonts.poppins(
                             fontSize: 11.5,
-                            color: abu,
+                            color: p.onSurfaceMuted,
                           ),
                         ),
                     ],
@@ -423,7 +428,7 @@ class _SalesRow extends StatelessWidget {
                       value: ringkasan.persen,
                       minHeight: 5,
                       color: AppColors.red,
-                      backgroundColor: const Color(0xFFE6E6E6),
+                      backgroundColor: p.divider,
                     ),
                   ),
                 ],

@@ -4,6 +4,7 @@ import 'package:sfa_mobile/data/models/order.dart';
 import 'package:sfa_mobile/data/services/order_service.dart';
 import 'package:sfa_mobile/ui/core/theme/app_colors.dart';
 import 'package:sfa_mobile/ui/core/theme/app_text_styles.dart';
+import 'package:sfa_mobile/ui/core/theme/app_theme.dart';
 import 'package:sfa_mobile/ui/core/widgets/search_icon_button.dart';
 import 'package:sfa_mobile/ui/manager/order/widgets/order_detail_sheet.dart';
 import 'package:sfa_mobile/ui/manager/order/widgets/order_filter_bar.dart';
@@ -18,7 +19,6 @@ class OrderListScreen extends StatefulWidget {
 }
 
 class _OrderListScreenState extends State<OrderListScreen> {
-  static const _white = TextStyle(color: AppColors.white);
   final _service = OrderService();
   List<Order> _orders = const [];
   OrderSummaryCount _summary = OrderSummaryCount.zero;
@@ -74,41 +74,61 @@ class _OrderListScreenState extends State<OrderListScreen> {
   }
 
   void _pickStatus() => showModalBottomSheet(
-        context: context,
-        builder: (ctx) => Column(mainAxisSize: MainAxisSize.min, children: [
-          for (final s in [null, ...OrderStatus.values])
-            ListTile(
-              title: Text(s?.label ?? 'Semua'),
-              selected: s == _status,
-              onTap: () {
-                Navigator.pop(ctx);
-                _setFilter(() => _status = s);
-              },
-            ),
-        ]),
-      );
+    context: context,
+    builder: (ctx) => Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (final s in [null, ...OrderStatus.values])
+          ListTile(
+            title: Text(s?.label ?? 'Semua'),
+            selected: s == _status,
+            onTap: () {
+              Navigator.pop(ctx);
+              _setFilter(() => _status = s);
+            },
+          ),
+      ],
+    ),
+  );
 
   Widget _body() {
-    if (_loading) return const Center(child: CircularProgressIndicator(color: AppColors.white));
+    final p = context.palette;
+    final textStyle = TextStyle(color: p.text);
+
+    if (_loading) {
+      return Center(child: CircularProgressIndicator(color: p.text));
+    }
     if (_error != null) {
       return Center(
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Text(_error!, style: _white),
-          TextButton(onPressed: _load, child: const Text('Coba lagi')),
-        ]),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(_error!, style: textStyle),
+            TextButton(
+              onPressed: _load,
+              style: TextButton.styleFrom(foregroundColor: p.text),
+              child: const Text('Coba lagi'),
+            ),
+          ],
+        ),
       );
     }
-    if (_orders.isEmpty) return const Center(child: Text('Belum ada order', style: _white));
+    if (_orders.isEmpty) {
+      return Center(child: Text('Belum ada order', style: textStyle));
+    }
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Material(
-        color: AppColors.white,
-        borderRadius: BorderRadius.circular(24),
+        color: p.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
+          side: p.isDark ? BorderSide.none : BorderSide(color: p.divider),
+        ),
         clipBehavior: Clip.antiAlias,
         child: ListView.separated(
           padding: EdgeInsets.zero,
           itemCount: _orders.length,
-          separatorBuilder: (_, _) => const Divider(height: 1, color: Color(0xFFEDEDED)),
+          separatorBuilder: (_, _) => Divider(height: 1, color: p.divider),
           itemBuilder: (_, i) {
             final o = _orders[i];
             return InkWell(
@@ -116,7 +136,8 @@ class _OrderListScreenState extends State<OrderListScreen> {
                 context,
                 o,
                 onAccept: () => _review(() => _service.accept(o.id!)),
-                onReject: (reason) => _review(() => _service.reject(o.id!, reason)),
+                onReject: (reason) =>
+                    _review(() => _service.reject(o.id!, reason)),
               ),
               child: OrderTile(number: i + 1, order: o, showSales: true),
             );
@@ -127,36 +148,51 @@ class _OrderListScreenState extends State<OrderListScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => SafeArea(
-        child: Column(children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text('Order', style: AppTextStyles.cardTitle.copyWith(fontSize: 28, color: AppColors.white)),
-                SearchIconButton(onTap: () {}),
-              ],
+  Widget build(BuildContext context) {
+    final p = context.palette;
+
+    return ThemedPage(
+      child: SafeArea(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Order',
+                    style: AppTextStyles.cardTitle.copyWith(
+                      fontSize: 28,
+                      color: p.text,
+                    ),
+                  ),
+                  SearchIconButton(onTap: () {}),
+                ],
+              ),
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: OrderFilterBar(
-              selected: _period,
-              onSelected: (p) => _setFilter(() => _period = _period == p ? null : p),
-              onStatusTap: _pickStatus,
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: OrderFilterBar(
+                selected: _period,
+                onSelected: (v) =>
+                    _setFilter(() => _period = _period == v ? null : v),
+                onStatusTap: _pickStatus,
+              ),
             ),
-          ),
-          const SizedBox(height: 12),
-          Expanded(child: _body()),
-          const SizedBox(height: 14),
-          OrderSummary(
-            all: _summary.all,
-            pending: _summary.pending,
-            accepted: _summary.accepted,
-            rejected: _summary.rejected,
-          ),
-          const SizedBox(height: 12),
-        ]),
-      );
+            const SizedBox(height: 12),
+            Expanded(child: _body()),
+            const SizedBox(height: 14),
+            OrderSummary(
+              all: _summary.all,
+              pending: _summary.pending,
+              accepted: _summary.accepted,
+              rejected: _summary.rejected,
+            ),
+            const SizedBox(height: 12),
+          ],
+        ),
+      ),
+    );
+  }
 }

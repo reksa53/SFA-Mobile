@@ -4,6 +4,7 @@ import '../../../data/models/product.dart';
 import '../../../data/services/product_service.dart';
 import '/utils/format.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_theme.dart';
 import '/ui/core/widgets/common.dart';
 import 'product_detail_screen.dart';
 import 'product_form_screen.dart';
@@ -97,7 +98,6 @@ class _ProductListScreenState extends State<ProductListScreen> {
         void upd(VoidCallback f) {
           setState(f);
           setSheet(() {});
-          
         }
 
         return SheetFrame(
@@ -108,9 +108,6 @@ class _ProductListScreenState extends State<ProductListScreen> {
             _cats.clear();
             _status = null;
           }),
-          
-          
-          
           child: Column(
             children: [
               SheetBox(
@@ -177,236 +174,235 @@ class _ProductListScreenState extends State<ProductListScreen> {
   Widget build(BuildContext context) => ListenableBuilder(
     listenable: _svc,
     builder: (context, _) {
+      final p = context.palette;
       final all = _svc.active;
       final shown = all.where(_match).toList();
       final outOf = all.where((p) => p.stock == 0).length;
 
-      return Scaffold(
-        backgroundColor: AppColors.background,
-        body: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: _searching
-                          ? Container(
-                              height: 44,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 14,
-                              ),
-                              decoration: BoxDecoration(
-                                color: AppColors.white,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: TextField(
-                                controller: _search,
-                                autofocus: true,
-                                onChanged: (_) => setState(() {}),
-                                style: kInputStyle,
-                                decoration: const InputDecoration(
-                                  hintText: 'Cari nama atau SKU...',
-                                  hintStyle: TextStyle(color: kTextMuted),
-                                  border: InputBorder.none,
-                                  isDense: true,
-                                  contentPadding: EdgeInsets.symmetric(
-                                    vertical: 13,
-                                  ),
+      return ThemedPage(
+        child: Scaffold(
+          backgroundColor: p.bg,
+          body: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _searching
+                            ? Container(
+                                height: 44,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 14,
                                 ),
-                              ),
-                            )
-                          : const Text(
-                              'Product List',
-                              style: TextStyle(
-                                color: AppColors.white,
-                                fontSize: 32,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                    ),
-                    const SizedBox(width: 10),
-                    _IconBtn(
-                      icon: _searching ? Icons.close : Icons.search,
-                      bg: AppColors.white,
-                      fg: AppColors.black,
-                      onTap: _toggleSearch,
-                    ),
-                    if (widget.canEdit) ...[
-                      const SizedBox(width: 10),
-                      _IconBtn(
-                        icon: Icons.add,
-                        bg: AppColors.red,
-                        fg: AppColors.white,
-                        onTap: _openAdd,
-                      ),
-                    ],
-                  ],
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Row(
-                          children: [
-                            for (final b in _svc.brands)
-                              GestureDetector(
-                                onTap: () => setState(() => _flipBrand(b)),
-                                child: Container(
-                                  height: 26,
-                                  margin: const EdgeInsets.only(right: 6),
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 10,
-                                  ),
-                                  alignment: Alignment.center,
-                                  decoration: BoxDecoration(
-                                    color: _brands.contains(b)
-                                        ? AppColors.red
-                                        : AppColors.grey,
-                                    borderRadius: BorderRadius.circular(13),
-                                  ),
-                                  child: Text(
-                                    b,
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.bold,
-                                      color: _brands.contains(b)
-                                          ? AppColors.white
-                                          : AppColors.black,
+                                decoration: BoxDecoration(
+                                  color: p.surface,
+                                  border: p.surfaceBorder,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: TextField(
+                                  controller: _search,
+                                  autofocus: true,
+                                  onChanged: (_) => setState(() {}),
+                                  style: kInputStyle,
+                                  decoration: const InputDecoration(
+                                    hintText: 'Cari nama atau SKU...',
+                                    hintStyle: TextStyle(color: kTextMuted),
+                                    border: InputBorder.none,
+                                    isDense: true,
+                                    contentPadding: EdgeInsets.symmetric(
+                                      vertical: 13,
                                     ),
                                   ),
                                 ),
+                              )
+                            : Text(
+                                'Product List',
+                                style: TextStyle(
+                                  color: p.text,
+                                  fontSize: 32,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
+                      ),
+                      const SizedBox(width: 10),
+                      _IconBtn(
+                        icon: _searching ? Icons.close : Icons.search,
+                        bg: p.surface,
+                        fg: p.onSurface,
+                        border: p.surfaceBorder,
+                        onTap: _toggleSearch,
+                      ),
+                      if (widget.canEdit) ...[
+                        const SizedBox(width: 10),
+                        _IconBtn(
+                          icon: Icons.add,
+                          bg: AppColors.red,
+                          fg: AppColors.white,
+                          onTap: _openAdd,
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            children: [
+                              for (final b in _svc.brands)
+                                GestureDetector(
+                                  onTap: () => setState(() => _flipBrand(b)),
+                                  child: Container(
+                                    height: 26,
+                                    margin: const EdgeInsets.only(right: 6),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                    ),
+                                    alignment: Alignment.center,
+                                    decoration: BoxDecoration(
+                                      color: _brands.contains(b)
+                                          ? AppColors.red
+                                          : p.chip,
+                                      borderRadius: BorderRadius.circular(13),
+                                    ),
+                                    child: Text(
+                                      b,
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                        color: _brands.contains(b)
+                                            ? AppColors.white
+                                            : p.onSurface,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      GestureDetector(
+                        onTap: _openFilter,
+                        child: Row(
+                          children: [
+                            Icon(Icons.tune, color: p.text, size: 16),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Filter',
+                              style: TextStyle(color: p.text, fontSize: 12),
+                            ),
+                            if (_filtered) ...[
+                              const SizedBox(width: 4),
+                              Container(
+                                width: 6,
+                                height: 6,
+                                decoration: const BoxDecoration(
+                                  color: AppColors.red,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                            ],
                           ],
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    GestureDetector(
-                      onTap: _openFilter,
-                      child: Row(
-                        children: [
-                          const Icon(
-                            Icons.tune,
-                            color: AppColors.white,
-                            size: 16,
-                          ),
-                          const SizedBox(width: 4),
-                          const Text(
-                            'Filter',
-                            style: TextStyle(
-                              color: AppColors.white,
-                              fontSize: 12,
-                            ),
-                          ),
-                          if (_filtered) ...[
-                            const SizedBox(width: 4),
-                            Container(
-                              width: 6,
-                              height: 6,
-                              decoration: const BoxDecoration(
-                                color: AppColors.red,
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                          ],
-                        ],
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Expanded(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: p.surface,
+                        border: p.surfaceBorder,
+                        borderRadius: BorderRadius.circular(24),
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Expanded(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: AppColors.white,
-                      borderRadius: BorderRadius.circular(24),
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(24),
-                      child: shown.isEmpty
-                          ? Center(
-                              child: _svc.loading
-                                  ? const CircularProgressIndicator(
-                                      color: AppColors.red,
-                                    )
-                                  : Text(
-                                      _svc.error ?? 'Produk tidak ditemukan',
-                                      textAlign: TextAlign.center,
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        color: AppColors.black,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(24),
+                        child: shown.isEmpty
+                            ? Center(
+                                child: _svc.loading
+                                    ? const CircularProgressIndicator(
+                                        color: AppColors.red,
+                                      )
+                                    : Text(
+                                        _svc.error ?? 'Produk tidak ditemukan',
+                                        textAlign: TextAlign.center,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          color: AppColors.black,
+                                        ),
                                       ),
+                              )
+                            : ScrollConfiguration(
+                                behavior: ScrollConfiguration.of(context)
+                                    .copyWith(overscroll: false),
+                                child: Scrollbar(
+                                  thickness: 3,
+                                  radius: const Radius.circular(8),
+                                  child: ListView.separated(
+                                    physics: const ClampingScrollPhysics(),
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 4,
                                     ),
-                            )
-                          : ScrollConfiguration(
-                              behavior: ScrollConfiguration.of(context)
-                                  .copyWith(overscroll: false),
-                              child: Scrollbar(
-                                thickness: 3,
-                                radius: const Radius.circular(8),
-                                child: ListView.separated(
-                                  physics: const ClampingScrollPhysics(),
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 4,
-                                  ),
-                                  itemCount: shown.length,
-                                  separatorBuilder: (_, _) => const Divider(
-                                    height: 1,
-                                    indent: 14,
-                                    endIndent: 14,
-                                  ),
-                                  itemBuilder: (_, i) => _Row(
-                                    product: shown[i],
-                                    onTap: () => Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (_) => ProductDetailScreen(
-                                          product: shown[i],
-                                          canEdit: widget.canEdit,
+                                    itemCount: shown.length,
+                                    separatorBuilder: (_, _) => const Divider(
+                                      height: 1,
+                                      indent: 14,
+                                      endIndent: 14,
+                                    ),
+                                    itemBuilder: (_, i) => _Row(
+                                      product: shown[i],
+                                      onTap: () => Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => ProductDetailScreen(
+                                            product: shown[i],
+                                            canEdit: widget.canEdit,
+                                          ),
                                         ),
                                       ),
                                     ),
                                   ),
                                 ),
                               ),
-                            ),
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        children: [
-                          _Stat('All Product', all.length),
-                          const SizedBox(height: 8),
-                          _Stat(
-                            'Near Expired',
-                            all.where((p) => p.nearExpired).length,
-                          ),
-                        ],
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          children: [
+                            _Stat('All Product', all.length),
+                            const SizedBox(height: 8),
+                            _Stat(
+                              'Near Expired',
+                              all.where((p) => p.nearExpired).length,
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 24),
-                    Expanded(
-                      child: Column(
-                        children: [
-                          _Stat('Available', all.length - outOf),
-                          const SizedBox(height: 8),
-                          _Stat('Out of Stock', outOf),
-                        ],
+                      const SizedBox(width: 24),
+                      Expanded(
+                        child: Column(
+                          children: [
+                            _Stat('Available', all.length - outOf),
+                            const SizedBox(height: 8),
+                            _Stat('Out of Stock', outOf),
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-              ],
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                ],
+              ),
             ),
           ),
         ),
@@ -421,12 +417,14 @@ class _IconBtn extends StatelessWidget {
     required this.bg,
     required this.fg,
     required this.onTap,
+    this.border,
   });
 
   final IconData icon;
   final Color bg;
   final Color fg;
   final VoidCallback onTap;
+  final BoxBorder? border;
 
   @override
   Widget build(BuildContext context) => GestureDetector(
@@ -436,6 +434,7 @@ class _IconBtn extends StatelessWidget {
       height: 44,
       decoration: BoxDecoration(
         color: bg,
+        border: border,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Icon(icon, color: fg),
@@ -529,27 +528,25 @@ class _Stat extends StatelessWidget {
   final int value;
 
   @override
-  Widget build(BuildContext context) => Row(
-    children: [
-      Expanded(
-        child: Text(
-          label,
-          style: const TextStyle(color: AppColors.white, fontSize: 13),
+  Widget build(BuildContext context) {
+    final p = context.palette;
+
+    return Row(
+      children: [
+        Expanded(
+          child: Text(label, style: TextStyle(color: p.text, fontSize: 13)),
         ),
-      ),
-      Container(
-        width: 32,
-        height: 22,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: AppColors.glass,
-          borderRadius: BorderRadius.circular(8),
+        Container(
+          width: 32,
+          height: 22,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: p.glassChip,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Text('$value', style: TextStyle(color: p.text, fontSize: 11)),
         ),
-        child: Text(
-          '$value',
-          style: const TextStyle(color: AppColors.white, fontSize: 11),
-        ),
-      ),
-    ],
-  );
+      ],
+    );
+  }
 }

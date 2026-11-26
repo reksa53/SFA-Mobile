@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 
+import '../theme/app_theme.dart';
 import 'floating_navbar.dart';
 
 /// Kerangka halaman bertab: isi di atas, navbar melayang di bawah.
 /// Dipakai ManagerShell dan SalesShell.
 class TabShell extends StatefulWidget {
-    const TabShell({super.key, required this.items, required this.pages});
-      
+  const TabShell({super.key, required this.items, required this.pages});
 
   final List<NavItem> items;
   final List<Widget> pages;
@@ -21,6 +21,8 @@ class _TabShellState extends State<TabShell> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      // Layar tanpa Scaffold sendiri (Order, placeholder) memakai latar ini.
+      backgroundColor: context.palette.bg,
       extendBody: true,
       body: IndexedStack(
         index: _index,

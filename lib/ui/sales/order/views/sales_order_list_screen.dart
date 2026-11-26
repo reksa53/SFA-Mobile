@@ -6,6 +6,7 @@ import 'package:sfa_mobile/data/services/customer_service.dart';
 import 'package:sfa_mobile/data/services/order_service.dart';
 import 'package:sfa_mobile/ui/core/theme/app_colors.dart';
 import 'package:sfa_mobile/ui/core/theme/app_text_styles.dart';
+import 'package:sfa_mobile/ui/core/theme/app_theme.dart';
 import 'package:sfa_mobile/ui/core/widgets/search_icon_button.dart';
 import 'package:sfa_mobile/ui/manager/order/widgets/order_summary.dart';
 import 'package:sfa_mobile/ui/manager/order/widgets/order_tile.dart';
@@ -25,7 +26,7 @@ class _SalesOrderListScreenState extends State<SalesOrderListScreen> {
   bool _loading = true;
   String? _error;
   List<Order> _orders = const [];
-   OrderSummaryCount _summary = OrderSummaryCount.zero;
+  OrderSummaryCount _summary = OrderSummaryCount.zero;
 
   @override
   void initState() {
@@ -48,7 +49,7 @@ class _SalesOrderListScreenState extends State<SalesOrderListScreen> {
       });
     } on DioException catch (e) {
       if (!mounted) return;
-      setState(()  {
+      setState(() {
         _error = OrderService.errorMessage(e);
         _loading = false;
       });
@@ -61,7 +62,9 @@ class _SalesOrderListScreenState extends State<SalesOrderListScreen> {
       stores = await _customerService.fetchAll();
     } on DioException catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(CustomerService.errorMessage(e))));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(CustomerService.errorMessage(e))),
+        );
       }
       return;
     }
@@ -76,85 +79,127 @@ class _SalesOrderListScreenState extends State<SalesOrderListScreen> {
     if (created == null || !mounted) return;
 
     _load();
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Order terkirim')));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Order terkirim')),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text('Sales Order', style: AppTextStyles.cardTitle.copyWith(fontSize: 28, color: AppColors.white)),
-                SearchIconButton(onTap: () {}),
-              ],
+    final p = context.palette;
+
+    return ThemedPage(
+      child: SafeArea(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Sales Order',
+                    style: AppTextStyles.cardTitle.copyWith(
+                      fontSize: 28,
+                      color: p.text,
+                    ),
+                  ),
+                  SearchIconButton(onTap: () {}),
+                ],
+              ),
             ),
-          ),
-          const SizedBox(height: 4),
-          Expanded(
-            child: _loading
-                ? const Center(child: CircularProgressIndicator(color: AppColors.white))
-                : _error != null
-                    ? Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(_error!, style: const TextStyle(color: AppColors.white)),
-                            const SizedBox(height: 8),
-                            TextButton(onPressed: _load, child: const Text('Coba lagi')),
-                          ],
-                        ),
-                      )
-                    : Column(
+            const SizedBox(height: 4),
+            Expanded(
+              child: _loading
+                  ? Center(child: CircularProgressIndicator(color: p.text))
+                  : _error != null
+                  ? Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          Expanded(
-                            child: Container(
-                              margin: const EdgeInsets.symmetric(horizontal: 20),
-                              decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(24)),
-                              clipBehavior: Clip.antiAlias,
-                              child: ListView.separated(
-                                padding: EdgeInsets.zero,
-                                itemCount: _orders.length,
-                                separatorBuilder: (_, _) => const Divider(height: 1, color: Color(0xFFEDEDED)),
-                                itemBuilder: (_, i) => OrderTile(number: i + 1, order: _orders[i]),
-                              ),
+                          Text(_error!, style: TextStyle(color: p.text)),
+                          const SizedBox(height: 8),
+                          TextButton(
+                            onPressed: _load,
+                            style: TextButton.styleFrom(
+                              foregroundColor: p.text,
                             ),
-                          ),
-                          const SizedBox(height: 14),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 20),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                Column(
-                                  children: [
-                                    OrderStat(label: 'Semua order', value: _summary.all),
-                                    const SizedBox(height: 8),
-                                    OrderStat(label: 'disetujui', value: _summary.accepted),
-                                  ],
-                                ),
-                                FilledButton(
-                                  onPressed: _addOrder,
-                                  style: FilledButton.styleFrom(
-                                    backgroundColor: AppColors.white,
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                                  ),
-                                  child: Text('Add Order',
-                                      style: AppTextStyles.navLabel.copyWith(fontSize: 14, color: AppColors.red)),
-                                ),
-                              ],
-                            ),
+                            child: const Text('Coba lagi'),
                           ),
                         ],
                       ),
-          ),
-          const SizedBox(height: 12),
-        ],
+                    )
+                  : Column(
+                      children: [
+                        Expanded(
+                          child: Container(
+                            margin: const EdgeInsets.symmetric(horizontal: 20),
+                            decoration: BoxDecoration(
+                              color: p.surface,
+                              borderRadius: BorderRadius.circular(24),
+                              border: p.surfaceBorder,
+                            ),
+                            clipBehavior: Clip.antiAlias,
+                            child: ListView.separated(
+                              padding: EdgeInsets.zero,
+                              itemCount: _orders.length,
+                              separatorBuilder: (_, _) =>
+                                  Divider(height: 1, color: p.divider),
+                              itemBuilder: (_, i) => OrderTile(
+                                number: i + 1,
+                                order: _orders[i],
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Column(
+                                children: [
+                                  OrderStat(
+                                    label: 'Semua order',
+                                    value: _summary.all,
+                                  ),
+                                  const SizedBox(height: 8),
+                                  OrderStat(
+                                    label: 'disetujui',
+                                    value: _summary.accepted,
+                                  ),
+                                ],
+                              ),
+                              FilledButton(
+                                onPressed: _addOrder,
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: p.surface,
+                                  side: p.isDark
+                                      ? null
+                                      : BorderSide(color: p.divider),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
+                                child: Text(
+                                  'Add Order',
+                                  style: AppTextStyles.navLabel.copyWith(
+                                    fontSize: 14,
+                                    color: AppColors.red,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+            ),
+            const SizedBox(height: 12),
+          ],
+        ),
       ),
     );
   }

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:sfa_mobile/ui/core/theme/app_colors.dart';
 import 'package:sfa_mobile/ui/core/theme/app_text_styles.dart';
+import 'package:sfa_mobile/ui/core/theme/app_theme.dart';
 
 class OrderSummary extends StatelessWidget {
   const OrderSummary({
@@ -44,29 +44,34 @@ class OrderSummary extends StatelessWidget {
 }
 
 class OrderStat extends StatelessWidget {
-  const OrderStat({super.key, required this.label, required this.value}); 
+  const OrderStat({super.key, required this.label, required this.value});
 
   final String label;
   final int value;
 
   @override
   Widget build(BuildContext context) {
+    final p = context.palette;
+
     return SizedBox(
       width: 130,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label,
-              style: AppTextStyles.navLabel
-                  .copyWith(fontSize: 14, color: AppColors.white)),
+          Text(
+            label,
+            style: AppTextStyles.navLabel.copyWith(fontSize: 14, color: p.text),
+          ),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
             decoration: BoxDecoration(
-              color: AppColors.black.withValues(alpha: 0.35),
+              color: p.badge,
               borderRadius: BorderRadius.circular(6),
             ),
-            child: Text('$value',
-                style: AppTextStyles.navLabel.copyWith(color: AppColors.white)),
+            child: Text(
+              '$value',
+              style: AppTextStyles.navLabel.copyWith(color: p.onChip),
+            ),
           ),
         ],
       ),
