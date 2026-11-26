@@ -16,7 +16,7 @@ class _Picker extends StatefulWidget {
 
   final String? brand;
   final String? category;
-
+  
   @override
   State<_Picker> createState() => _PickerState();
 }
@@ -37,13 +37,13 @@ class _PickerState extends State<_Picker> {
     if (_category != null && !_svc.categories.contains(_category)) _newCategory = _category;
   }
 
-  List<String> get _brandOptions => <String>{..._svc.brands, if (_newBrand != null) _newBrand!}.toList()..sort();
+    List<String> get _brandOptions => <String>{..._svc.brands, ?_newBrand}.toList()..sort();
 
   // brand yang belum punya produk: tawarkan semua kategori
   List<String> get _catOptions {
     final b = _brand;
     final base = (b == null || !_svc.knowsBrand(b)) ? _svc.categories : _svc.categoriesFor([b]);
-    return <String>{...base, if (_newCategory != null) _newCategory!}.toList()..sort();
+        return <String>{...base, ?_newCategory}.toList()..sort();
   }
 
   void _pickBrand(String b) => setState(() {

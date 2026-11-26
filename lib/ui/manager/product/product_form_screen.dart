@@ -92,17 +92,21 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
       Navigator.pop(context);
       messenger.showSnackBar(const SnackBar(content: Text('Produk disimpan')));
     } on DioException catch (e) {
+      debugPrint(
+        'CREATE PRODUCT ERROR: ${e.response?.statusCode} -> ${e.response?.data}',
+      );
       final errors = e.response?.data is Map
           ? e.response!.data['errors'] as Map?
           : null;
+      final msg = e.response?.data is Map ? e.response!.data['message'] : null;
       messenger.showSnackBar(
         SnackBar(
           content: Text(
             e.response?.statusCode == 422
                 ? (errors == null
-                      ? 'Data tidak valid'
+                      ? '${msg ?? 'Data tidak valid'}'
                       : '${(errors.values.first as List).first}')
-                : 'Gagal menyimpan produk',
+                : 'Gagal (${e.response?.statusCode ?? 'koneksi'}): ${msg ?? e.message}',
           ),
         ),
       );
@@ -286,8 +290,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                                   value: _active,
                                   activeThumbColor: AppColors.white,
                                   activeTrackColor: AppColors.red,
-                                  onChanged: (v) =>
-                                      setState(() => _active = v),
+                                  onChanged: (v) => setState(() => _active = v),
                                 ),
                               ],
                             ),
